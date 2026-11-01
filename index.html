@@ -262,7 +262,7 @@
       margin-bottom: 4px;
     }
 
-    /* 王冠 👑 ースタイル */
+    /* 王冠 👑 スタイル */
     .crown-badge {
       position: absolute;
       top: -12px;
@@ -539,7 +539,7 @@
     <div class="modal">
       <h2>ごきぶりポーカー ルール v2.1</h2>
       <h3>基本概要</h3>
-      <p>嫌われ者カードを押し付け合い、敗者1인을決めるブラフゲームです。</p>
+      <p>嫌われ者カードを押し付け合い、敗者1人を決めるブラフゲームです。</p>
       
       <h3>カード構成（計64枚）</h3>
       <ul>
@@ -875,7 +875,7 @@
       lastEvent: null,
       loserId: null,
       gameCount: 0,
-      history: [] // 勝負の記録
+      history: []
     };
 
     let selectedUniqueId = null;
@@ -906,7 +906,7 @@
       let html = `<p style="font-weight:bold; margin-bottom:8px; color:#333;">総試合数: ${gameState.gameCount}戦</p>`;
       html += `<div style="max-height: 250px; overflow-y: auto;">`;
       
-      gameState.history.slice().reverse().forEach((h, idx) => {
+      gameState.history.slice().reverse().forEach((h) => {
         html += `
           <div style="background: #f8f9fa; border-left: 4px solid #e74c3c; padding: 8px; margin-bottom: 6px; border-radius: 4px; font-size: 0.85rem; color:#333;">
             <strong>第 ${h.gameNum} 戦</strong><br>
@@ -1324,7 +1324,7 @@
 
     function triggerGameOver(loserId, reason) {
       const loser = gameState.players.find(p => p.id === loserId);
-      loser.loseCount = (loser.loseCount || 0) + 1; // 負けポイント加算
+      loser.loseCount = (loser.loseCount || 0) + 1;
 
       gameState.phase = 'GAME_OVER';
       gameState.loserId = loserId;
@@ -1391,7 +1391,6 @@
         }
       }
 
-      // 最少敗北プレイヤー（王冠対象）の計算（2戦目以降のみ、首位タイ全員に王冠）
       let minLoseCount = Infinity;
       if (gameState.gameCount >= 2) {
         gameState.players.forEach(p => {

@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ごきぶりポーカー Online v2.1</title>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --table-green: #1b5e20;
+      --table-dark-green: #0d3810;
+      --card-bg: #ffffff;
+      --text-color: #ffffff;
+      --primary: #4a90e2;
+      --accent: #e74c3c;
+      --success: #2ecc71;
+      --warning: #f39c12;
+      --border-radius: 12px;
+      --shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    
+    body {
+      background: radial-gradient(circle, #2e7d32 0%, var(--table-dark-green) 100%);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      background: rgba(15, 23, 42, 0.9);
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      border-bottom: 2px solid #388e3c;
+    }
+
+    .logo { font-size: 1.2rem; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+    .header-btns { display: flex; gap: 8px; align-items: center; }
+    .bgm-btn {
+      background: #27ae60;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+      font-size: 0.85rem;
+    }
+    .bgm-btn.off { background: #7f8c8d; }
+    
+    .record-btn {
+      background: #8e44ad;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+      font-size: 0.85rem;
+    }
+    .record-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .rule-btn {
+      background: var(--warning);
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+    }
+    .rule-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      color: #333;
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: white;
+      width: 90%;
+      max-width: 600px;
+      max-height: 85vh;
+      border-radius: var(--border-radius);
+      padding: 24px;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+    .modal h2 { margin-bottom: 12px; border-bottom: 2px solid #ccc; padding-bottom: 8px; color: #111; }
+    .modal h3 { margin-top: 16px; margin-bottom: 6px; font-size: 1.05rem; color: #333; }
+    .modal ul { margin-left: 20px; font-size: 0.9rem; line-height: 1.5; }
+    .modal-close {
+      margin-top: 20px;
+      background: #1e293b;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      width: 100%;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    main { flex: 1; padding: 12px; max-width: 1000px; margin: 0 auto; width: 100%; position: relative; display: flex; flex-direction: column; }
+
+    .lobby-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 450px;
+      margin: 40px auto 0;
+      color: #333;
+    }
+    .card-panel {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 24px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+    }
+    .card-panel h2 { font-size: 1.2rem; margin-bottom: 16px; color: #333; border-left: 4px solid var(--primary); padding-left: 8px; }
+    .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    label { font-size: 0.85rem; color: #555; font-weight: bold; }
+    input[type="text"] {
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+    }
+    .btn {
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      width: 100%;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-success { background: var(--success); color: white; }
+
+    .room-info {
+      text-align: center;
+      background: #eef4fb;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .room-number { font-size: 2.2rem; font-weight: bold; color: var(--primary); letter-spacing: 2px; }
+    .player-list { list-style: none; margin-bottom: 20px; }
+    .player-item {
+      padding: 10px 14px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .game-layout { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    
+    .status-bar {
+      background: rgba(0, 0, 0, 0.6);
+      padding: 10px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      text-align: center;
+      font-size: 1rem;
+      border: 1px solid rgba(255,255,255,0.2);
+      backdrop-filter: blur(4px);
+    }
+    
+    .other-players {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .player-frame {
+      background: linear-gradient(135deg, #795548, #4e342e);
+      border: 3px solid #d7ccc8;
+      border-radius: 12px;
+      padding: 6px;
+      width: 132px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      position: relative;
+      transition: all 0.2s;
+    }
+    .player-frame.active {
+      border-color: #ffd700;
+      box-shadow: 0 0 12px #ffd700;
+    }
+    .player-frame.selectable {
+      cursor: pointer;
+      border-color: #2ecc71;
+      animation: pulse-glow 1.5s infinite;
+    }
+    .player-frame.selectable:hover { transform: scale(1.05); }
+    @keyframes pulse-glow {
+      0% { box-shadow: 0 0 5px #2ecc71; }
+      50% { box-shadow: 0 0 15px #2ecc71; }
+      100% { box-shadow: 0 0 5px #2ecc71; }
+    }
+
+    .player-name-tag {
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: bold;
+      width: 100%;
+      text-align: center;
+      padding: 2px 4px;
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+    .avatar-icon-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      border: 2px solid rgba(255,255,255,0.4);
+      position: relative;
+      margin-bottom: 4px;
+    }
+
+    /* 王冠 👑 ースタイル */
+    .crown-badge {
+      position: absolute;
+      top: -12px;
+      right: -8px;
+      font-size: 1.1rem;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+      z-index: 15;
+      animation: crown-bounce 2s infinite ease-in-out;
+    }
+    @keyframes crown-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    /* 負けポイントバッジ (右上) */
+    .lose-count-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #e74c3c;
+      color: white;
+      font-size: 0.65rem;
+      font-weight: bold;
+      padding: 1px 5px;
+      border-radius: 8px;
+      border: 1px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      z-index: 12;
+    }
+
+    .hand-fan-badge {
+      position: absolute;
+      bottom: -6px;
+      background: #1976d2;
+      color: white;
+      font-size: 0.6rem;
+      font-weight: bold;
+      padding: 1px 5px;
+      border-radius: 10px;
+      border: 1px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .mini-field-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2px;
+      width: 100%;
+      background: rgba(0,0,0,0.4);
+      padding: 3px;
+      border-radius: 4px;
+    }
+    .mini-field-item {
+      font-size: 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,0.15);
+      padding: 1px 3px;
+      border-radius: 2px;
+    }
+
+    .table-center {
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(0,0,0,0.2) 100%);
+      border: 2px dashed rgba(255,255,255,0.3);
+      padding: 12px;
+      border-radius: 16px;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 6px;
+      margin: 4px 0;
+    }
+
+    .game-card {
+      width: 65px;
+      height: 90px;
+      border-radius: 8px;
+      border: 2px solid #fff;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+      position: relative;
+    }
+    .game-card:hover { transform: translateY(-6px); box-shadow: 0 6px 12px rgba(0,0,0,0.4); }
+    .game-card.selected {
+      transform: translateY(-10px) !important;
+      border-color: #ffd700 !important;
+      box-shadow: 0 0 14px #ffd700;
+    }
+    .game-card .card-top-icon { font-size: 0.75rem; align-self: flex-start; }
+    .game-card .card-main-icon { font-size: 1.8rem; margin: 2px 0; }
+    .game-card .card-title { font-size: 0.65rem; font-weight: bold; }
+    
+    .card-count-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #e74c3c;
+      color: white;
+      font-size: 0.7rem;
+      font-weight: bold;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+
+    .card-back-style {
+      background: linear-gradient(135deg, #1565c0, #0d47a1);
+      border-color: #ffffff;
+      color: white;
+      justify-content: center;
+    }
+
+    .card-cockroach { border-color: #a0522d; background: #fff9f5; color: #6b3410; }
+    .card-spider    { border-color: #4a4a4a; background: #f7f7f7; color: #222222; }
+    .card-fly       { border-color: #5c6bc0; background: #f0f2fe; color: #283593; }
+    .card-bat       { border-color: #7e57c2; background: #f3e5f5; color: #4a148c; }
+    .card-frog      { border-color: #66bb6a; background: #f1f8e9; color: #1b5e20; }
+    .card-rat       { border-color: #8d6e63; background: #efebe9; color: #3e2723; }
+    .card-scorpion  { border-color: #ef5350; background: #ffebee; color: #b71c1c; }
+    .card-stinkbug  { border-color: #827717; background: #f9fbe7; color: #827717; }
+
+    .popup-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+    }
+    .popup-banner {
+      background: rgba(15, 23, 42, 0.95);
+      color: white;
+      padding: 24px 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      text-align: center;
+      transform: scale(0.5);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border: 3px solid #fff;
+    }
+    .popup-banner.show { transform: scale(1); opacity: 1; }
+    .popup-banner.win { border-color: #2ecc71; background: rgba(20, 80, 40, 0.95); }
+    .popup-banner.lose { border-color: #e74c3c; background: rgba(100, 20, 20, 0.95); }
+    .popup-banner.bluff { border-color: #f39c12; background: rgba(90, 60, 10, 0.95); }
+    .popup-banner.roulette { border-color: #ffd700; background: rgba(20, 30, 60, 0.95); }
+    .popup-title { font-size: 2rem; font-weight: bold; margin-bottom: 8px; }
+    .popup-sub { font-size: 1.15rem; color: #eee; }
+
+    .control-panel {
+      background: rgba(0, 0, 0, 0.65);
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .action-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; justify-content: center; align-items: center; }
+    .select-box { padding: 8px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 0.95rem; background: white; color: #333; }
+
+    .my-hand-section {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      padding-top: 4px;
+    }
+
+    .hand-grid-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 10px;
+      border-radius: 10px;
+      width: 100%;
+      min-height: 110px;
+    }
+
+    .my-field-box {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 6px 10px;
+      border-radius: 8px;
+      margin-top: 4px;
+    }
+
+    .field-cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+    .field-item {
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(255,255,255,0.15);
+      padding: 3px 6px;
+      border-radius: 4px;
+    }
+
+    .logs-panel {
+      background: rgba(0,0,0,0.5);
+      padding: 6px 10px;
+      border-radius: 8px;
+      max-height: 70px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      color: #ddd;
+      margin-top: 4px;
+    }
+    .log-entry { margin-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- YouTube BGM プレーヤー -->
+  <div style="position: absolute; left: -9999px; top: -9999px;">
+    <div id="youtubeBgmPlayer"></div>
+  </div>
+
+  <header>
+    <div class="logo">🪳 ごきぶりポーカー Online <span style="font-size: 0.8rem; color: #ffd700; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">v2.1</span></div>
+    <div class="header-btns">
+      <button class="bgm-btn" id="bgmToggleBtn" onclick="toggleBGM()">🎵 BGM: ON</button>
+      <button class="record-btn" onclick="toggleRecordModal(true)">🏆 戦績</button>
+      <button class="rule-btn" onclick="toggleModal(true)">📖 ルール確認</button>
+    </div>
+  </header>
+
+  <div class="popup-overlay">
+    <div class="popup-banner" id="centerPopup">
+      <div class="popup-title" id="popupTitle">メッセージ</div>
+      <div class="popup-sub" id="popupSub">サブテキスト</div>
+    </div>
+  </div>
+
+  <!-- 戦績モーダル -->
+  <div class="modal-overlay" id="recordModal">
+    <div class="modal">
+      <h2>🏆 対戦成績・勝敗記録</h2>
+      <div id="recordContent" style="margin-bottom: 15px;">
+        <p style="color: #666; font-size: 0.9rem;">まだ対戦記録はありません。</p>
+      </div>
+      <button class="modal-close" onclick="toggleRecordModal(false)">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ルールモーダル -->
+  <div class="modal-overlay" id="ruleModal">
+    <div class="modal">
+      <h2>ごきぶりポーカー ルール v2.1</h2>
+      <h3>基本概要</h3>
+      <p>嫌われ者カードを押し付け合い、敗者1인을決めるブラフゲームです。</p>
+      
+      <h3>カード構成（計64枚）</h3>
+      <ul>
+        <li>8種類（🪳ゴキブリ、🕷️クモ、🪰ハエ、🦇コウモリ、🐸カエル、🐀ネズミ、🦂サソリ、🪲カメムシ）各8枚</li>
+      </ul>
+
+      <h3>2人プレイの特殊ルール</h3>
+      <ul>
+        <li>デッキからランダムに10枚を除外します。</li>
+        <li>敗北条件が「同じカード5枚」に変わります。</li>
+      </ul>
+
+      <h3>手番でできること</h3>
+      <p>手札の虫を1つ選んでタップし、相手の動物アイコンを直接タップして、種類を宣言します（嘘でもOK）。</p>
+      <p>受け取った人の選択肢：</p>
+      <ul>
+        <li><b>見破る：</b>宣言が「本当」か「嘘」かを当てる。正解なら出し手、不正解なら自分が引き取る。</li>
+        <li><b>パス：</b>自分だけ確認し、別プレイヤーの動物アイコンをタップしてパスする。</li>
+      </ul>
+
+      <h3>敗北条件</h3>
+      <ul>
+        <li>自分の場に<b>同じ種類のカードが4枚</b>（2人時は5枚）揃う。</li>
+        <li>自分の場に<b>8種類すべてのカード</b>が1枚以上揃う。</li>
+        <li>自分の手番開始時に<b>手札が0枚</b>になっている。</li>
+      </ul>
+      <button class="modal-close" onclick="toggleModal(false)">閉じる</button>
+    </div>
+  </div>
+
+  <main>
+    <div id="lobbyScreen" class="lobby-container">
+      <div class="card-panel">
+        <h2>部屋を作成する</h2>
+        <div class="input-group">
+          <label>プレイヤー名</label>
+          <input type="text" id="hostNameInput" placeholder="名前を入力" maxlength="10">
+        </div>
+        <button class="btn btn-primary" onclick="playSound('click'); createRoom();">3桁の部屋を作成</button>
+      </div>
+
+      <div class="card-panel">
+        <h2>部屋に参加する</h2>
+        <div class="input-group">
+          <label>プレイヤー名</label>
+          <input type="text" id="joinNameInput" placeholder="名前を入力" maxlength="10">
+        </div>
+        <div class="input-group">
+          <label>部屋番号（3桁数字）</label>
+          <input type="text" id="roomNumInput" placeholder="例: 123" maxlength="3">
+        </div>
+        <button class="btn btn-success" onclick="playSound('click'); joinRoom();">部屋に参加</button>
+      </div>
+    </div>
+
+    <div id="waitingScreen" class="card-panel hidden" style="max-width: 450px; margin: 40px auto 0; color:#333;">
+      <div class="room-info">
+        <div>部屋番号</div>
+        <div class="room-number" id="displayRoomNum">---</div>
+      </div>
+      <h2>参加プレイヤー一覧</h2>
+      <ul class="player-list" id="waitingPlayerList"></ul>
+      <button id="startGameBtn" class="btn btn-primary hidden" onclick="playSound('click'); requestStartGame();">ゲームを開始する</button>
+      <p id="waitingNotice" style="text-align: center; color: #666; font-size: 0.9rem;" class="hidden">ホストがゲームを開始するのを待っています...</p>
+    </div>
+
+    <div id="gameScreen" class="game-layout hidden">
+      <div class="status-bar" id="statusMessage">ゲーム初期化中...</div>
+
+      <div class="other-players" id="otherPlayersArea"></div>
+
+      <div class="table-center">
+        <div id="centerCardContainer">
+          <p style="color: rgba(255,255,255,0.7);">カードはありません</p>
+        </div>
+        <div id="centerClaimText" style="font-weight: bold; font-size: 1.1rem; color: #ffd700;"></div>
+      </div>
+
+      <div class="control-panel hidden" id="actionPanel">
+        <h3 id="actionTitle" style="font-size: 0.95rem; text-align:center;">あなたのアクション</h3>
+        <div class="action-group" id="actionButtons"></div>
+      </div>
+
+      <!-- ホスト専用 再戦ボタンエリア -->
+      <div id="hostRematchArea" class="hidden" style="text-align: center; margin: 6px 0;">
+        <button class="btn btn-success" style="max-width: 300px; margin: 0 auto; background: #27ae60; font-size: 1.05rem;" onclick="playSound('click'); requestRematch();">🔄 もう一度遊ぶ (再戦)</button>
+      </div>
+
+      <div class="my-hand-section">
+        <div class="hand-grid-container" id="myHandCards"></div>
+
+        <div class="my-field-box">
+          <div style="font-size:0.75rem; font-weight:bold; margin-bottom:4px; color:#aaa;">自分の引き取りカード (場札):</div>
+          <div class="field-cards" id="myFieldCards"></div>
+        </div>
+      </div>
+
+      <div class="logs-panel" id="logContainer">
+        <div class="log-entry">ゲームが開始されました。</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+
+  <script>
+    // --- YouTube BGM ＆ 効果音エンジン (v2.1) ---
+    let ytPlayer = null;
+    let isBgmPlaying = true;
+    let ytReady = false;
+
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player('youtubeBgmPlayer', {
+        height: '0',
+        width: '0',
+        videoId: 'TnaksMAARW8',
+        playerVars: {
+          'autoplay': 1,
+          'loop': 1,
+          'playlist': 'TnaksMAARW8',
+          'controls': 0,
+          'disablekb': 1,
+          'fs': 0,
+          'modestbranding': 1
+        },
+        events: {
+          'onReady': (event) => {
+            ytReady = true;
+            event.target.setVolume(18);
+            if (isBgmPlaying) {
+              event.target.playVideo();
+            }
+          },
+          'onStateChange': (event) => {
+            if (event.data === YT.PlayerState.ENDED) {
+              ytPlayer.playVideo();
+            }
+          }
+        }
+      });
+    }
+
+    function unlockAudioAndBgm() {
+      initAudio();
+      if (ytReady && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+        if (isBgmPlaying) {
+          ytPlayer.playVideo();
+        }
+      }
+    }
+
+    window.addEventListener('click', unlockAudioAndBgm, { once: true });
+    window.addEventListener('keydown', unlockAudioAndBgm, { once: true });
+    window.addEventListener('touchstart', unlockAudioAndBgm, { once: true });
+
+    function toggleBGM() {
+      const btn = document.getElementById('bgmToggleBtn');
+      isBgmPlaying = !isBgmPlaying;
+
+      if (ytReady && ytPlayer && typeof ytPlayer.playVideo === 'function') {
+        if (isBgmPlaying) {
+          ytPlayer.playVideo();
+          btn.innerText = "🎵 BGM: ON";
+          btn.classList.remove('off');
+        } else {
+          ytPlayer.pauseVideo();
+          btn.innerText = "🎵 BGM: OFF";
+          btn.classList.add('off');
+        }
+      } else {
+        if (isBgmPlaying) {
+          btn.innerText = "🎵 BGM: ON";
+          btn.classList.remove('off');
+        } else {
+          btn.innerText = "🎵 BGM: OFF";
+          btn.classList.add('off');
+        }
+      }
+    }
+
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playSound(type) {
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+
+        if (type === 'click') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(250, now + 0.08);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'card') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(350, now);
+          osc.frequency.exponentialRampToValueAtTime(150, now + 0.1);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else if (type === 'roulette_tick') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.04);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        } else if (type === 'bluff_success') {
+          [440, 554.37, 659.25, 880].forEach((f, i) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.type = 'triangle';
+            o.frequency.setValueAtTime(f, now + i * 0.08);
+            g.gain.setValueAtTime(0.35, now + i * 0.08);
+            g.gain.linearRampToValueAtTime(0.01, now + i * 0.08 + 0.15);
+            o.start(now + i * 0.08);
+            o.stop(now + i * 0.08 + 0.15);
+          });
+        } else if (type === 'win') {
+          const chordNotes = [
+            [523.25, 659.25, 783.99],
+            [587.33, 698.46, 880.00],
+            [659.25, 830.61, 987.77],
+            [523.25, 659.25, 783.99, 1046.50]
+          ];
+          const times = [0, 0.18, 0.36, 0.6];
+          const durations = [0.16, 0.16, 0.2, 0.7];
+
+          chordNotes.forEach((chord, idx) => {
+            chord.forEach(freq => {
+              const o = audioCtx.createOscillator();
+              const g = audioCtx.createGain();
+              o.connect(g);
+              g.connect(audioCtx.destination);
+              o.type = 'triangle';
+              o.frequency.setValueAtTime(freq, now + times[idx]);
+              g.gain.setValueAtTime(0.4, now + times[idx]);
+              g.gain.linearRampToValueAtTime(0.01, now + times[idx] + durations[idx]);
+              o.start(now + times[idx]);
+              o.stop(now + times[idx] + durations[idx]);
+            });
+          });
+        } else if (type === 'lose') {
+          const notes = [
+            { f: 311.13, t: 0, d: 0.25 },
+            { f: 293.66, t: 0.25, d: 0.25 },
+            { f: 277.18, t: 0.5, d: 0.3 },
+            { f: 261.63, t: 0.8, d: 0.8 }
+          ];
+
+          notes.forEach(n => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.type = 'sawtooth';
+            o.frequency.setValueAtTime(n.f, now + n.t);
+            g.gain.setValueAtTime(0.35, now + n.t);
+            g.gain.linearRampToValueAtTime(0.001, now + n.t + n.d);
+            o.start(now + n.t);
+            o.stop(now + n.t + n.d);
+          });
+        }
+      } catch (e) {
+        console.log("Audio play error:", e);
+      }
+    }
+
+    // --- ゲーム本体のロジック ---
+    const CARD_TYPES = [
+      { id: 'cockroach', name: 'ゴキブリ', icon: '🪳', class: 'card-cockroach', order: 1 },
+      { id: 'spider',    name: 'クモ',     icon: '🕷️', class: 'card-spider',    order: 2 },
+      { id: 'fly',       name: 'ハエ',     icon: '🪰', class: 'card-fly',       order: 3 },
+      { id: 'bat',       name: 'コウモリ', icon: '🦇', class: 'card-bat',       order: 4 },
+      { id: 'frog',      name: 'カエル',   icon: '🐸', class: 'card-frog',      order: 5 },
+      { id: 'rat',       name: 'ネズミ',   icon: '🐀', class: 'card-rat',       order: 6 },
+      { id: 'scorpion',  name: 'サソリ',   icon: '🦂', class: 'card-scorpion',  order: 7 },
+      { id: 'stinkbug',  name: 'カメムシ', icon: '🪲', class: 'card-stinkbug',  order: 8 }
+    ];
+
+    const PLAYER_THEMES = [
+      { avatar: '🐼', bg: '#1976d2', name: 'パンダ' },
+      { avatar: '🦊', bg: '#e74c3c', name: 'キツネ' },
+      { avatar: '🐰', bg: '#2ecc71', name: 'ウサギ' },
+      { avatar: '🐱', bg: '#f39c12', name: 'ネコ' },
+      { avatar: '🐨', bg: '#8e44ad', name: 'コアラ' },
+      { avatar: '🦁', bg: '#00bcd4', name: 'ライオン' }
+    ];
+
+    const PEER_PREFIX = "goki-poker-room-3digit-v21-";
+
+    let peer = null;
+    let connections = {};
+    let hostConn = null;
+    let isHost = false;
+    let myId = "";
+    let myName = "";
+    let roomNum = "";
+
+    let gameState = {
+      started: false,
+      players: [],
+      turnPlayerId: null,
+      activeCard: null,
+      phase: 'IDLE',
+      logs: [],
+      lastEvent: null,
+      loserId: null,
+      gameCount: 0,
+      history: [] // 勝負の記録
+    };
+
+    let selectedUniqueId = null;
+    let selectedTypeId = null;
+    let targetPlayerIdForAction = null;
+    let lastHandledEventId = null;
+
+    function toggleModal(show) {
+      playSound('click');
+      document.getElementById('ruleModal').classList.toggle('active', show);
+    }
+
+    function toggleRecordModal(show) {
+      playSound('click');
+      if (show) {
+        updateRecordModalContent();
+      }
+      document.getElementById('recordModal').classList.toggle('active', show);
+    }
+
+    function updateRecordModalContent() {
+      const container = document.getElementById('recordContent');
+      if (!gameState.history || gameState.history.length === 0) {
+        container.innerHTML = `<p style="color: #666; font-size: 0.9rem;">まだ対戦記録はありません。</p>`;
+        return;
+      }
+
+      let html = `<p style="font-weight:bold; margin-bottom:8px; color:#333;">総試合数: ${gameState.gameCount}戦</p>`;
+      html += `<div style="max-height: 250px; overflow-y: auto;">`;
+      
+      gameState.history.slice().reverse().forEach((h, idx) => {
+        html += `
+          <div style="background: #f8f9fa; border-left: 4px solid #e74c3c; padding: 8px; margin-bottom: 6px; border-radius: 4px; font-size: 0.85rem; color:#333;">
+            <strong>第 ${h.gameNum} 戦</strong><br>
+            敗北: <span style="color:#e74c3c; font-weight:bold;">${h.loserName}</span> (${h.reason})
+          </div>
+        `;
+      });
+      html += `</div>`;
+      container.innerHTML = html;
+    }
+
+    function showPopup(title, sub, styleClass = '', duration = 3500) {
+      const popup = document.getElementById('centerPopup');
+      popup.className = `popup-banner ${styleClass} show`;
+      document.getElementById('popupTitle').innerText = title;
+      document.getElementById('popupSub').innerText = sub;
+      if (duration > 0) {
+        setTimeout(() => {
+          popup.classList.remove('show');
+        }, duration);
+      }
+    }
+
+    function createRoom() {
+      const name = document.getElementById('hostNameInput').value.trim();
+      if (!name) return alert("名前を入力してください");
+      myName = name;
+      isHost = true;
+      roomNum = Math.floor(100 + Math.random() * 900).toString();
+      initPeer(PEER_PREFIX + roomNum);
+    }
+
+    function joinRoom() {
+      const name = document.getElementById('joinNameInput').value.trim();
+      const num = document.getElementById('roomNumInput').value.trim();
+      if (!name) return alert("名前を入力してください");
+      if (!num || num.length !== 3 || isNaN(num)) return alert("3桁の部屋番号を入力してください");
+      myName = name;
+      isHost = false;
+      roomNum = num;
+      initPeer(null);
+    }
+
+    function initPeer(customId) {
+      peer = customId ? new Peer(customId) : new Peer();
+
+      peer.on('open', (id) => {
+        myId = id;
+        if (isHost) {
+          setupHostUI();
+          gameState.players.push({ id: myId, name: myName, hand: [], field: createEmptyField(), loseCount: 0 });
+          updateWaitingList();
+        } else {
+          connectToHost();
+        }
+      });
+
+      peer.on('error', (err) => {
+        alert("通信エラーまたは部屋が存在しません: " + err.type);
+      });
+
+      if (isHost) {
+        peer.on('connection', (conn) => {
+          conn.on('data', (data) => handleClientData(conn, data));
+          conn.on('close', () => removePlayer(conn.peer));
+        });
+      }
+    }
+
+    function connectToHost() {
+      const hostPeerId = PEER_PREFIX + roomNum;
+      hostConn = peer.connect(hostPeerId);
+
+      hostConn.on('open', () => {
+        hostConn.send({ type: 'JOIN', name: myName });
+        showScreen('waitingScreen');
+        document.getElementById('displayRoomNum').innerText = roomNum;
+        document.getElementById('waitingNotice').classList.remove('hidden');
+      });
+
+      hostConn.on('data', (data) => handleHostData(data));
+      hostConn.on('close', () => alert("ホストとの接続が切断されました"));
+    }
+
+    function setupHostUI() {
+      showScreen('waitingScreen');
+      document.getElementById('displayRoomNum').innerText = roomNum;
+      document.getElementById('startGameBtn').classList.remove('hidden');
+    }
+
+    function updateWaitingList() {
+      const list = document.getElementById('waitingPlayerList');
+      list.innerHTML = gameState.players.map(p => `
+        <li class="player-item">
+          <span>${p.name} ${p.id === myId ? '(あなた・ホスト)' : ''}</span>
+        </li>
+      `).join('');
+
+      if (isHost) {
+        const btn = document.getElementById('startGameBtn');
+        btn.disabled = gameState.players.length < 2 || gameState.players.length > 6;
+        btn.innerText = gameState.players.length < 2 ? "2人以上必要です" : "ゲームを開始する";
+      }
+    }
+
+    function removePlayer(peerId) {
+      gameState.players = gameState.players.filter(p => p.id !== peerId);
+      delete connections[peerId];
+      if (!gameState.started) {
+        updateWaitingList();
+        broadcastGameState();
+      }
+    }
+
+    function handleClientData(conn, data) {
+      if (data.type === 'JOIN') {
+        if (gameState.started) {
+          conn.send({ type: 'ERROR', message: 'ゲームは既に開始されています' });
+          return;
+        }
+        if (gameState.players.length >= 6) {
+          conn.send({ type: 'ERROR', message: '部屋が満員です' });
+          return;
+        }
+        connections[conn.peer] = conn;
+        gameState.players.push({ id: conn.peer, name: data.name, hand: [], field: createEmptyField(), loseCount: 0 });
+        updateWaitingList();
+        broadcastGameState();
+      } else if (data.type === 'ACTION') {
+        handlePlayerAction(conn.peer, data.action);
+      } else if (data.type === 'REMATCH') {
+        if (isHost) startNewGameRound();
+      }
+    }
+
+    function handleHostData(data) {
+      if (data.type === 'SYNC') {
+        gameState = data.state;
+        renderGame();
+        triggerEventPopups();
+      } else if (data.type === 'ERROR') {
+        alert(data.message);
+      }
+    }
+
+    function broadcastGameState() {
+      if (!isHost) return;
+      renderGame();
+      triggerEventPopups();
+
+      Object.keys(connections).forEach(peerId => {
+        const maskedState = JSON.parse(JSON.stringify(gameState));
+        maskedState.players.forEach(p => {
+          if (p.id !== peerId) {
+            p.hand = p.hand.map(c => ({ id: 'unknown', uniqueId: c.uniqueId, name: '枚数のみ', icon: '❓', class: 'card-back-style' }));
+          }
+        });
+        connections[peerId].send({ type: 'SYNC', state: maskedState });
+      });
+    }
+
+    function triggerEventPopups() {
+      if (!gameState.lastEvent || gameState.lastEvent.eventId === lastHandledEventId) return;
+      lastHandledEventId = gameState.lastEvent.eventId;
+
+      const ev = gameState.lastEvent;
+
+      if (ev.type === 'START_ROULETTE') {
+        startRouletteAnimation(ev.firstPlayerId, ev.firstPlayerName);
+      } else if (ev.type === 'JUDGE_RESULT') {
+        const realCardInfo = CARD_TYPES.find(c => c.id === ev.realCardId);
+
+        if (ev.guessCorrect) {
+          if (myId === ev.targetId) {
+            playSound('win');
+            showPopup("✨ 見破り成功！", `正解！カード（${realCardInfo.name} ${realCardInfo.icon}）は ${ev.fromName} が引き取りました。`, 'win');
+          } else if (myId === ev.fromId) {
+            playSound('lose');
+            showPopup("💦 残念...！見破られました", `ブラフが見破られました。カード（${realCardInfo.name} ${realCardInfo.icon}）を自分の場に引き取ります...`, 'lose');
+          } else {
+            playSound('click');
+            showPopup("✨ 見破り成功！", `${ev.targetName} が ${ev.fromName} のカードを見破りました。`, 'win');
+          }
+        } else {
+          if (myId === ev.fromId) {
+            playSound('bluff_success');
+            showPopup("😈 ブラフ成功！", `相手を騙すことに成功！カード（${realCardInfo.name} ${realCardInfo.icon}）は ${ev.targetName} が引き取りました！`, 'bluff');
+          } else if (myId === ev.targetId) {
+            playSound('lose');
+            showPopup("💦 残念...！見破り失敗", `ハズレです... カード（${realCardInfo.name} ${realCardInfo.icon}）を自分の場に引き取ります...`, 'lose');
+          } else {
+            playSound('click');
+            showPopup("😈 ブラフ成功！", `${ev.fromName} が ${ev.targetName} を騙すことに成功しました！`, 'bluff');
+          }
+        }
+      } else if (ev.type === 'GAME_OVER') {
+        setTimeout(() => {
+          if (myId === gameState.loserId) {
+            playSound('lose');
+            showPopup("😭 残念...！あなたの敗北です", `敗北条件を満たしてしまいました... (${ev.reason})`, 'lose', 12000);
+          } else {
+            playSound('win');
+            showPopup("🎉 勝利！", `おめでとうございます！ ${ev.loserName} さんの敗北により、あなたの勝利です！`, 'win', 12000);
+          }
+        }, 1500);
+      }
+    }
+
+    function startRouletteAnimation(winnerId, winnerName) {
+      let count = 0;
+      const totalSteps = 20;
+      const playerNames = gameState.players.map(p => p.name);
+
+      const interval = setInterval(() => {
+        const randomName = playerNames[count % playerNames.length];
+        showPopup("🎲 最初のプレイヤー決定中...", randomName, 'roulette', 0);
+        playSound('roulette_tick');
+        count++;
+
+        if (count >= totalSteps) {
+          clearInterval(interval);
+          playSound('bluff_success');
+          showPopup("🎯 スタートプレイヤー決定！", `最初の出し手は 【${winnerName}】 さんです！`, 'win', 3000);
+        }
+      }, 100);
+    }
+
+    function sendActionToHost(action) {
+      playSound('card');
+      if (isHost) {
+        handlePlayerAction(myId, action);
+      } else {
+        hostConn.send({ type: 'ACTION', action: action });
+      }
+    }
+
+    function createEmptyField() {
+      const field = {};
+      CARD_TYPES.forEach(c => field[c.id] = 0);
+      return field;
+    }
+
+    function requestStartGame() {
+      if (!isHost) return;
+      gameState.gameCount = 0;
+      gameState.history = [];
+      gameState.players.forEach(p => p.loseCount = 0);
+      startNewGameRound();
+    }
+
+    function requestRematch() {
+      if (!isHost) return;
+      startNewGameRound();
+    }
+
+    function startNewGameRound() {
+      if (!isHost) return;
+      if (gameState.players.length < 2 || gameState.players.length > 6) return;
+
+      gameState.gameCount++;
+
+      let deck = [];
+      let uidCounter = 1;
+      CARD_TYPES.forEach(type => {
+        for (let i = 0; i < 8; i++) {
+          deck.push({ 
+            id: type.id, 
+            name: type.name, 
+            icon: type.icon, 
+            class: type.class,
+            uniqueId: `card_${type.id}_${uidCounter++}` 
+          });
+        }
+      });
+
+      deck.sort(() => Math.random() - 0.5);
+
+      if (gameState.players.length === 2) {
+        deck = deck.slice(10);
+        addLog("2人プレイ用ルール: 10枚のカードをランダムに除外しました。");
+      }
+
+      gameState.players.forEach(p => {
+        p.hand = [];
+        p.field = createEmptyField();
+      });
+
+      let pIdx = 0;
+      while (deck.length > 0) {
+        gameState.players[pIdx].hand.push(deck.pop());
+        pIdx = (pIdx + 1) % gameState.players.length;
+      }
+
+      const randomStartIdx = Math.floor(Math.random() * gameState.players.length);
+      const firstPlayer = gameState.players[randomStartIdx];
+
+      gameState.started = true;
+      gameState.turnPlayerId = firstPlayer.id;
+      gameState.phase = 'IDLE';
+      gameState.loserId = null;
+
+      gameState.lastEvent = {
+        eventId: Date.now() + "_START",
+        type: 'START_ROULETTE',
+        firstPlayerId: firstPlayer.id,
+        firstPlayerName: firstPlayer.name
+      };
+
+      addLog(`【第 ${gameState.gameCount} 戦 開始】最初の出し手は ${firstPlayer.name} さんです。`);
+      broadcastGameState();
+    }
+
+    function handlePlayerAction(playerId, action) {
+      if (action.type === 'OFFER') {
+        const player = gameState.players.find(p => p.id === playerId);
+        const cardIdx = player.hand.findIndex(c => c.uniqueId === action.cardUniqueId);
+        if (cardIdx === -1) return;
+        const card = player.hand.splice(cardIdx, 1)[0];
+
+        gameState.activeCard = {
+          card: card,
+          fromId: playerId,
+          targetId: action.targetId,
+          claim: action.claim,
+          passedPlayerIds: [playerId]
+        };
+        gameState.phase = 'OFFERED';
+        
+        const targetName = gameState.players.find(p => p.id === action.targetId).name;
+        const claimObj = CARD_TYPES.find(c => c.id === action.claim);
+        addLog(`${player.name} が ${targetName} へ「${claimObj.name}」と宣言してカードを渡しました。`);
+
+      } else if (action.type === 'JUDGE') {
+        const active = gameState.activeCard;
+        const isTrue = active.card.id === active.claim;
+        const targetPlayer = gameState.players.find(p => p.id === playerId);
+        const fromPlayer = gameState.players.find(p => p.id === active.fromId);
+
+        let loserId = null;
+        const guessCorrect = (action.guess === isTrue);
+
+        if (guessCorrect) {
+          loserId = active.fromId;
+          addLog(`${targetPlayer.name} は見破りに成功！ カードは ${fromPlayer.name} の場へ。`);
+        } else {
+          loserId = playerId;
+          addLog(`${targetPlayer.name} は見破りに失敗... カードは ${targetPlayer.name} の場へ。`);
+        }
+
+        const loser = gameState.players.find(p => p.id === loserId);
+        loser.field[active.card.id]++;
+
+        gameState.lastEvent = {
+          eventId: Date.now() + "_" + Math.random(),
+          type: 'JUDGE_RESULT',
+          guessCorrect: guessCorrect,
+          fromId: active.fromId,
+          fromName: fromPlayer.name,
+          targetId: playerId,
+          targetName: targetPlayer.name,
+          realCardId: active.card.id
+        };
+
+        gameState.activeCard = null;
+        gameState.phase = 'IDLE';
+        gameState.turnPlayerId = loserId;
+
+        checkDefeatCondition(loserId);
+
+      } else if (action.type === 'PASS') {
+        const active = gameState.activeCard;
+        active.fromId = playerId;
+        active.targetId = action.targetId;
+        active.claim = action.claim;
+        active.passedPlayerIds.push(playerId);
+
+        const targetName = gameState.players.find(p => p.id === action.targetId).name;
+        const claimObj = CARD_TYPES.find(c => c.id === action.claim);
+        const player = gameState.players.find(p => p.id === playerId);
+        addLog(`${player.name} はカードを確認し、${targetName} へ「${claimObj.name}」と宣言してパスしました。`);
+      }
+
+      if (gameState.phase === 'IDLE' && gameState.phase !== 'GAME_OVER') {
+        const turnP = gameState.players.find(p => p.id === gameState.turnPlayerId);
+        if (turnP && turnP.hand.length === 0) {
+          triggerGameOver(turnP.id, `${turnP.name} の手札がなくなりました！`);
+        }
+      }
+
+      broadcastGameState();
+    }
+
+    function checkDefeatCondition(playerId) {
+      const player = gameState.players.find(p => p.id === playerId);
+      const isTwoPlayers = gameState.players.length === 2;
+      const limit = isTwoPlayers ? 5 : 4;
+
+      for (let typeId in player.field) {
+        if (player.field[typeId] >= limit) {
+          const cardName = CARD_TYPES.find(c => c.id === typeId).name;
+          triggerGameOver(playerId, `${player.name} の場に「${cardName}」が${limit}枚揃いました！`);
+          return;
+        }
+      }
+
+      let typesCount = 0;
+      for (let typeId in player.field) {
+        if (player.field[typeId] > 0) typesCount++;
+      }
+      if (typesCount === 8) {
+        triggerGameOver(playerId, `${player.name} の場に全8種類のカードが揃いました！`);
+        return;
+      }
+    }
+
+    function triggerGameOver(loserId, reason) {
+      const loser = gameState.players.find(p => p.id === loserId);
+      loser.loseCount = (loser.loseCount || 0) + 1; // 負けポイント加算
+
+      gameState.phase = 'GAME_OVER';
+      gameState.loserId = loserId;
+
+      gameState.history.push({
+        gameNum: gameState.gameCount,
+        loserId: loserId,
+        loserName: loser.name,
+        reason: reason
+      });
+
+      addLog(`【ゲーム終了】 ${reason} ${loser.name} さんの負けです！（通算敗北: ${loser.loseCount}回）`);
+
+      gameState.lastEvent = {
+        eventId: Date.now() + "_GAMEOVER",
+        type: 'GAME_OVER',
+        loserId: loserId,
+        loserName: loser.name,
+        reason: reason
+      };
+    }
+
+    function addLog(msg) {
+      gameState.logs.unshift(msg);
+      if (gameState.logs.length > 30) gameState.logs.pop();
+    }
+
+    function showScreen(screenId) {
+      document.getElementById('lobbyScreen').classList.add('hidden');
+      document.getElementById('waitingScreen').classList.add('hidden');
+      document.getElementById('gameScreen').classList.add('hidden');
+      document.getElementById(screenId).classList.remove('hidden');
+    }
+
+    function renderGame() {
+      if (!gameState.started) return;
+      showScreen('gameScreen');
+
+      const me = gameState.players.find(p => p.id === myId);
+
+      const statusEl = document.getElementById('statusMessage');
+      const rematchArea = document.getElementById('hostRematchArea');
+
+      if (gameState.phase === 'GAME_OVER') {
+        const isWinner = myId !== gameState.loserId;
+        const loserName = gameState.players.find(p => p.id === gameState.loserId)?.name || '';
+        statusEl.innerText = isWinner ? `🎉 勝利！ (${loserName} さんの敗北)` : `😭 残念...！あなたの敗北です`;
+        statusEl.style.borderColor = isWinner ? "var(--success)" : "var(--accent)";
+
+        if (isHost) {
+          rematchArea.classList.remove('hidden');
+        }
+      } else {
+        rematchArea.classList.add('hidden');
+        if (gameState.phase === 'IDLE') {
+          const isMyTurn = gameState.turnPlayerId === myId;
+          statusEl.innerText = isMyTurn ? "👉 あなたの手番です。出したい虫と相手アイコンをタップしてください。" : `⏳ ${getTurnPlayerName()} の手番です...`;
+          statusEl.style.borderColor = isMyTurn ? "var(--success)" : "var(--primary)";
+        } else if (gameState.phase === 'OFFERED') {
+          const isTarget = gameState.activeCard.targetId === myId;
+          const targetName = gameState.players.find(p => p.id === gameState.activeCard.targetId).name;
+          statusEl.innerText = isTarget ? "⚠️ あなたへカードが回されてきました！" : `👀 ${targetName} が回答選択中...`;
+          statusEl.style.borderColor = isTarget ? "var(--warning)" : "var(--primary)";
+        }
+      }
+
+      // 最少敗北プレイヤー（王冠対象）の計算（2戦目以降のみ、首位タイ全員に王冠）
+      let minLoseCount = Infinity;
+      if (gameState.gameCount >= 2) {
+        gameState.players.forEach(p => {
+          const cnt = p.loseCount || 0;
+          if (cnt < minLoseCount) minLoseCount = cnt;
+        });
+      }
+
+      const othersArea = document.getElementById('otherPlayersArea');
+      othersArea.innerHTML = '';
+      
+      gameState.players.forEach((p, index) => {
+        if (p.id === myId) return;
+
+        const isTurn = (gameState.phase === 'IDLE' && gameState.turnPlayerId === p.id) || 
+                       (gameState.phase === 'OFFERED' && gameState.activeCard.targetId === p.id);
+        
+        const theme = PLAYER_THEMES[index % PLAYER_THEMES.length];
+        const isMyTurn = (gameState.phase === 'IDLE' && gameState.turnPlayerId === myId);
+        const isPassTarget = (gameState.phase === 'OFFERED' && gameState.activeCard.targetId === myId && !gameState.activeCard.passedPlayerIds.includes(p.id));
+        const canSelect = isMyTurn || isPassTarget;
+        const isSelectedTarget = (targetPlayerIdForAction === p.id);
+
+        const hasCrown = (gameState.gameCount >= 2 && (p.loseCount || 0) === minLoseCount);
+        const losePts = p.loseCount || 0;
+
+        const pCard = document.createElement('div');
+        pCard.className = `player-frame ${isTurn ? 'active' : ''} ${canSelect ? 'selectable' : ''}`;
+        if (isSelectedTarget) {
+          pCard.style.borderColor = "#ffd700";
+          pCard.style.boxShadow = "0 0 15px #ffd700";
+        }
+
+        pCard.innerHTML = `
+          ${hasCrown ? '<div class="crown-badge">👑</div>' : ''}
+          <div class="player-name-tag">${p.name}</div>
+          <div class="avatar-icon-box" style="background: ${theme.bg};">
+            ${theme.avatar}
+            <div class="lose-count-badge" title="負けポイント">敗${losePts}</div>
+            <div class="hand-fan-badge">${p.hand.length}枚</div>
+          </div>
+          <div class="mini-field-list">
+            ${CARD_TYPES.map(c => `
+              <div class="mini-field-item">
+                <span>${c.icon}</span>
+                <span style="font-weight:bold;">${p.field[c.id] || 0}</span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        pCard.onclick = () => {
+          playSound('click');
+          if (isMyTurn || isPassTarget) {
+            targetPlayerIdForAction = p.id;
+            renderGame();
+          }
+        };
+
+        othersArea.appendChild(pCard);
+      });
+
+      const centerBox = document.getElementById('centerCardContainer');
+      const centerClaim = document.getElementById('centerClaimText');
+      if (gameState.activeCard) {
+        centerBox.innerHTML = `
+          <div class="game-card card-back-style" style="width:65px; height:90px; margin: 0 auto;">
+            <span style="font-size:1.6rem;">❓</span>
+            <span style="font-size:0.6rem;">裏向き</span>
+          </div>
+        `;
+        const claimObj = CARD_TYPES.find(c => c.id === gameState.activeCard.claim);
+        centerClaim.innerText = `宣言: 「${claimObj.name} ${claimObj.icon}」`;
+      } else {
+        centerBox.innerHTML = `<p style="color: rgba(255,255,255,0.7);">カードはありません</p>`;
+        centerClaim.innerText = '';
+      }
+
+      renderMyHandGrouped(me);
+      renderActionPanel(me);
+
+      const logEl = document.getElementById('logContainer');
+      logEl.innerHTML = gameState.logs.map(l => `<div class="log-entry">${l}</div>`).join('');
+    }
+
+    function getTurnPlayerName() {
+      const p = gameState.players.find(p => p.id === gameState.turnPlayerId);
+      return p ? p.name : '';
+    }
+
+    function renderMyHandGrouped(me) {
+      const handContainer = document.getElementById('myHandCards');
+      handContainer.innerHTML = '';
+
+      if (me.hand.length === 0) {
+        handContainer.innerHTML = `<p style="color: #aaa; font-size: 0.85rem;">手札はありません</p>`;
+        return;
+      }
+
+      CARD_TYPES.forEach((typeInfo) => {
+        const cardsOfType = me.hand.filter(c => c.id === typeInfo.id);
+        const count = cardsOfType.length;
+
+        if (count > 0) {
+          const firstCard = cardsOfType[0];
+          const isSelected = (selectedTypeId === typeInfo.id);
+
+          const el = document.createElement('div');
+          el.className = `game-card ${typeInfo.class} ${isSelected ? 'selected' : ''}`;
+          el.innerHTML = `
+            <div class="card-count-badge">${count}</div>
+            <div class="card-top-icon">${typeInfo.icon}</div>
+            <div class="card-main-icon">${typeInfo.icon}</div>
+            <div class="card-title">${typeInfo.name}</div>
+          `;
+
+          el.onclick = () => {
+            playSound('click');
+            if (gameState.phase === 'IDLE' && gameState.turnPlayerId === myId) {
+              if (selectedTypeId === typeInfo.id) {
+                selectedTypeId = null;
+                selectedUniqueId = null;
+              } else {
+                selectedTypeId = typeInfo.id;
+                selectedUniqueId = firstCard.uniqueId;
+              }
+              renderGame();
+            }
+          };
+
+          handContainer.appendChild(el);
+        }
+      });
+
+      const fieldContainer = document.getElementById('myFieldCards');
+      fieldContainer.innerHTML = CARD_TYPES.map(c => `
+        <div class="field-item">
+          <span>${c.icon} ${c.name}</span>
+          <span style="font-weight:bold; margin-left:auto;">${me.field[c.id] || 0}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderActionPanel(me) {
+      const panel = document.getElementById('actionPanel');
+      const title = document.getElementById('actionTitle');
+      const group = document.getElementById('actionButtons');
+      group.innerHTML = '';
+
+      if (gameState.phase === 'GAME_OVER') {
+        panel.classList.add('hidden');
+        return;
+      }
+
+      if (gameState.phase === 'IDLE' && gameState.turnPlayerId === myId) {
+        panel.classList.remove('hidden');
+        
+        const targetPlayerObj = gameState.players.find(p => p.id === targetPlayerIdForAction);
+        const targetNameDisplay = targetPlayerObj ? `【${targetPlayerObj.name}】` : '未選択';
+
+        title.innerHTML = `手札を選択し、相手アイコンをタップ (${targetNameTag(targetNameDisplay)})`;
+
+        if (!selectedUniqueId) {
+          group.innerHTML = `<p style="color:#aaa; font-size:0.85rem;">👆 まず出したい虫のカードをタップして選択してください。</p>`;
+          return;
+        }
+
+        if (!targetPlayerIdForAction) {
+          group.innerHTML = `<p style="color:#f39c12; font-size:0.85rem;">👆 次に、上部の<strong>渡したい相手の動物アイコン</strong>をタップしてください。</p>`;
+          return;
+        }
+
+        const claimSelect = document.createElement('select');
+        claimSelect.className = 'select-box';
+        CARD_TYPES.forEach(c => {
+          claimSelect.innerHTML += `<option value="${c.id}">${c.name} ${c.icon}</option>`;
+        });
+
+        const sendBtn = document.createElement('button');
+        sendBtn.className = 'btn btn-primary';
+        sendBtn.style.width = 'auto';
+        sendBtn.innerText = `${targetPlayerObj.name} さんへカードを渡す`;
+        sendBtn.onclick = () => {
+          playSound('card');
+          sendActionToHost({
+            type: 'OFFER',
+            cardUniqueId: selectedUniqueId,
+            targetId: targetPlayerIdForAction,
+            claim: claimSelect.value
+          });
+          selectedUniqueId = null;
+          selectedTypeId = null;
+          targetPlayerIdForAction = null;
+        };
+
+        group.appendChild(claimSelect);
+        group.appendChild(sendBtn);
+
+      } else if (gameState.phase === 'OFFERED' && gameState.activeCard.targetId === myId) {
+        panel.classList.remove('hidden');
+        title.innerText = "回されてきたカードに対してアクションを選択してください";
+
+        const trueBtn = document.createElement('button');
+        trueBtn.className = 'btn btn-success';
+        trueBtn.style.width = 'auto';
+        trueBtn.innerText = '「本当」と見破る';
+        trueBtn.onclick = () => {
+          sendActionToHost({ type: 'JUDGE', guess: true });
+        };
+
+        const falseBtn = document.createElement('button');
+        falseBtn.className = 'btn btn-primary';
+        falseBtn.style.width = 'auto';
+        falseBtn.innerText = '「嘘」と見破る';
+        falseBtn.onclick = () => {
+          sendActionToHost({ type: 'JUDGE', guess: false });
+        };
+
+        group.appendChild(trueBtn);
+        group.appendChild(falseBtn);
+
+        const unpassedPlayers = gameState.players.filter(p => !gameState.activeCard.passedPlayerIds.includes(p.id));
+
+        if (unpassedPlayers.length > 0) {
+          const passDiv = document.createElement('div');
+          passDiv.style.cssText = "width:100%; margin-top:6px; border-top:1px solid rgba(255,255,255,0.2); padding-top:6px; text-align:center;";
+          passDiv.innerHTML = `<label style="display:block; margin-bottom:4px; font-size:0.8rem; color:#ccc;">または、上部の<strong>別プレイヤーの動物アイコン</strong>をタップしてパス宣言：</label>`;
+
+          const claimSelect = document.createElement('select');
+          claimSelect.className = 'select-box';
+          CARD_TYPES.forEach(c => {
+            claimSelect.innerHTML += `<option value="${c.id}">${c.name} ${c.icon}</option>`;
+          });
+
+          const targetPlayerObj = gameState.players.find(p => p.id === targetPlayerIdForAction);
+          const passBtn = document.createElement('button');
+          passBtn.className = 'btn';
+          passBtn.style.cssText = "background:#8e44ad; color:white; width:auto;";
+          passBtn.innerText = `${targetPlayerObj ? targetPlayerObj.name : '相手'}へカードを見てパスする`;
+          passBtn.disabled = !targetPlayerIdForAction;
+          passBtn.onclick = () => {
+            if (!targetPlayerIdForAction) return;
+            const realCard = gameState.activeCard.card;
+            const realCardInfo = CARD_TYPES.find(c => c.id === realCard.id);
+            alert(`【カード確認】\n正体は 「${realCardInfo.name} ${realCardInfo.icon}」 でした。`);
+
+            sendActionToHost({
+              type: 'PASS',
+              targetId: targetPlayerIdForAction,
+              claim: claimSelect.value
+            });
+            targetPlayerIdForAction = null;
+          };
+
+          passDiv.appendChild(claimSelect);
+          passDiv.appendChild(passBtn);
+          group.appendChild(passDiv);
+        }
+
+      } else {
+        panel.classList.add('hidden');
+      }
+    }
+
+    function targetNameTag(name) {
+      return `<span style="color:#ffd700;">選択先: ${name}</span>`;
+    }
+  </script>
+</body>
+</html>

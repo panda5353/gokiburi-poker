@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ごきぶりポーカー Online v2.0</title>
+  <title>ごきぶりポーカー Online v2.2</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     :root {
@@ -59,6 +59,21 @@
       font-size: 0.85rem;
     }
     .bgm-btn.off { background: #7f8c8d; }
+    
+    .record-btn {
+      background: #8e44ad;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: all 0.2s;
+      font-size: 0.85rem;
+    }
+    .record-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
     .rule-btn {
       background: var(--warning);
       color: white;
@@ -109,6 +124,23 @@
       width: 100%;
       font-weight: bold;
       cursor: pointer;
+    }
+
+    /* 戦績テーブルスタイル */
+    .record-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+    .record-table th, .record-table td {
+      border: 1px solid #ddd;
+      padding: 8px 10px;
+      text-align: center;
+    }
+    .record-table th {
+      background: #f1f5f9;
+      color: #333;
     }
 
     main { flex: 1; padding: 12px; max-width: 1000px; margin: 0 auto; width: 100%; position: relative; display: flex; flex-direction: column; }
@@ -247,6 +279,35 @@
       margin-bottom: 4px;
     }
 
+    .crown-badge {
+      position: absolute;
+      top: -12px;
+      right: -8px;
+      font-size: 1.1rem;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+      z-index: 15;
+      animation: crown-bounce 2s infinite ease-in-out;
+    }
+    @keyframes crown-bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    .lose-count-badge {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #e74c3c;
+      color: white;
+      font-size: 0.65rem;
+      font-weight: bold;
+      padding: 1px 5px;
+      border-radius: 8px;
+      border: 1px solid white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      z-index: 12;
+    }
+
     .hand-fan-badge {
       position: absolute;
       bottom: -6px;
@@ -356,6 +417,7 @@
     .card-scorpion  { border-color: #ef5350; background: #ffebee; color: #b71c1c; }
     .card-stinkbug  { border-color: #827717; background: #f9fbe7; color: #827717; }
 
+    /* ぐるぐる円形ルーレット用モーダル・キャンバス */
     .popup-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -368,7 +430,7 @@
     .popup-banner {
       background: rgba(15, 23, 42, 0.95);
       color: white;
-      padding: 24px 40px;
+      padding: 24px 30px;
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
       text-align: center;
@@ -382,8 +444,35 @@
     .popup-banner.lose { border-color: #e74c3c; background: rgba(100, 20, 20, 0.95); }
     .popup-banner.bluff { border-color: #f39c12; background: rgba(90, 60, 10, 0.95); }
     .popup-banner.roulette { border-color: #ffd700; background: rgba(20, 30, 60, 0.95); }
-    .popup-title { font-size: 2rem; font-weight: bold; margin-bottom: 8px; }
-    .popup-sub { font-size: 1.15rem; color: #eee; }
+    .popup-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 12px; }
+
+    /* 円形ルーレット盤面スタイル */
+    .roulette-wheel-container {
+      position: relative;
+      width: 220px;
+      height: 220px;
+      margin: 0 auto;
+    }
+    .roulette-pointer {
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0; 
+      height: 0; 
+      border-left: 12px solid transparent;
+      border-right: 12px solid transparent;
+      border-top: 22px solid #e74c3c;
+      z-index: 10;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+    }
+    #rouletteCanvas {
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      box-shadow: 0 0 15px rgba(255,215,0,0.6);
+      border: 4px solid #ffd700;
+    }
 
     .control-panel {
       background: rgba(0, 0, 0, 0.65);
@@ -462,25 +551,41 @@
   </div>
 
   <header>
-    <div class="logo">🪳 ごきぶりポーカー Online <span style="font-size: 0.8rem; color: #ffd700; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">v2.0</span></div>
+    <div class="logo">🪳 ごきぶりポーカー Online <span style="font-size: 0.8rem; color: #ffd700; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">v2.2</span></div>
     <div class="header-btns">
       <button class="bgm-btn" id="bgmToggleBtn" onclick="toggleBGM()">🎵 BGM: ON</button>
+      <button class="record-btn" onclick="toggleRecordModal(true)">🏆 戦績</button>
       <button class="rule-btn" onclick="toggleModal(true)">📖 ルール確認</button>
     </div>
   </header>
 
+  <!-- ポップアップ／円形ルーレット表示エリア -->
   <div class="popup-overlay">
     <div class="popup-banner" id="centerPopup">
       <div class="popup-title" id="popupTitle">メッセージ</div>
-      <div class="popup-sub" id="popupSub">サブテキスト</div>
+      <div id="popupBody">
+        <div class="popup-sub" id="popupSub">サブテキスト</div>
+      </div>
     </div>
   </div>
 
+  <!-- 戦績モーダル（表形式） -->
+  <div class="modal-overlay" id="recordModal">
+    <div class="modal">
+      <h2>🏆 対戦成績・勝敗記録</h2>
+      <div id="recordContent" style="margin-bottom: 15px;">
+        <p style="color: #666; font-size: 0.9rem;">まだ対戦記録はありません。</p>
+      </div>
+      <button class="modal-close" onclick="toggleRecordModal(false)">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ルールモーダル -->
   <div class="modal-overlay" id="ruleModal">
     <div class="modal">
-      <h2>ごきぶりポーカー ルール v2.0</h2>
+      <h2>ごきぶりポーカー ルール v2.2</h2>
       <h3>基本概要</h3>
-      <p>嫌われ者カードを押し付け合い、敗者1人を決めるブラフゲームです。</p>
+      <p>嫌われ者カードを押し付け合い、敗者1人を決めるブラフゲームです。v2.2では円形ルーレットと表形式の戦績に対応！</p>
       
       <h3>カード構成（計64枚）</h3>
       <ul>
@@ -493,19 +598,11 @@
         <li>敗北条件が「同じカード5枚」に変わります。</li>
       </ul>
 
-      <h3>手番でできること</h3>
-      <p>手札の虫を1つ選んでタップし、相手の動物アイコンを直接タップして、種類を宣言します（嘘でもOK）。</p>
-      <p>受け取った人の選択肢：</p>
-      <ul>
-        <li><b>見破る：</b>宣言が「本当」か「嘘」かを当てる。正解なら出し手、不正解なら自分が引き取る。</li>
-        <li><b>パス：</b>自分だけ確認し、別プレイヤーの動物アイコンをタップしてパスする。</li>
-      </ul>
-
       <h3>敗北条件</h3>
       <ul>
-        <li>自分の場に<b>同じ種類のカードが4枚</b>（2人時は5枚）揃う。</li>
-        <li>自分の場に<b>8種類すべてのカード</b>が1枚以上揃う。</li>
-        <li>自分の手番開始時に<b>手札が0枚</b>になっている。</li>
+        <li>自分の場に同じ種類のカードが4枚（2人時は5枚）揃う。</li>
+        <li>自分の場に8種類すべてのカードが1枚以上揃う。</li>
+        <li>自分の手番開始時に手札が0枚になっている。</li>
       </ul>
       <button class="modal-close" onclick="toggleModal(false)">閉じる</button>
     </div>
@@ -564,6 +661,11 @@
         <div class="action-group" id="actionButtons"></div>
       </div>
 
+      <!-- ホスト専用 再戦ボタンエリア -->
+      <div id="hostRematchArea" class="hidden" style="text-align: center; margin: 6px 0;">
+        <button class="btn btn-success" style="max-width: 300px; margin: 0 auto; background: #27ae60; font-size: 1.05rem;" onclick="playSound('click'); requestRematch();">🔄 もう一度遊ぶ (再戦)</button>
+      </div>
+
       <div class="my-hand-section">
         <div class="hand-grid-container" id="myHandCards"></div>
 
@@ -583,7 +685,7 @@
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // --- YouTube BGM ＆ 効果音エンジン (v2.0 SE音量調整＆音分離) ---
+    // --- YouTube BGM ＆ 効果音エンジン (v2.2) ---
     let ytPlayer = null;
     let isBgmPlaying = true;
     let ytReady = false;
@@ -605,7 +707,7 @@
         events: {
           'onReady': (event) => {
             ytReady = true;
-            event.target.setVolume(18); // BGM音量を抑えめに設定
+            event.target.setVolume(18);
             if (isBgmPlaying) {
               event.target.playVideo();
             }
@@ -657,7 +759,6 @@
       }
     }
 
-    // 効果音用 Web Audio API (SE音量強化＆明確な勝敗音分離)
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) {
@@ -722,12 +823,11 @@
             o.stop(now + i * 0.08 + 0.15);
           });
         } else if (type === 'win') {
-          // 華やかな勝利用ファンファーレ (明るい和音コード進行)
           const chordNotes = [
-            [523.25, 659.25, 783.99], // C
-            [587.33, 698.46, 880.00], // Dm
-            [659.25, 830.61, 987.77], // Em
-            [523.25, 659.25, 783.99, 1046.50] // C High
+            [523.25, 659.25, 783.99],
+            [587.33, 698.46, 880.00],
+            [659.25, 830.61, 987.77],
+            [523.25, 659.25, 783.99, 1046.50]
           ];
           const times = [0, 0.18, 0.36, 0.6];
           const durations = [0.16, 0.16, 0.2, 0.7];
@@ -747,7 +847,6 @@
             });
           });
         } else if (type === 'lose') {
-          // 重厚で悲しい敗北用サウンド (不協和音を含む重い音階)
           const notes = [
             { f: 311.13, t: 0, d: 0.25 },
             { f: 293.66, t: 0.25, d: 0.25 },
@@ -760,7 +859,7 @@
             const g = audioCtx.createGain();
             o.connect(g);
             g.connect(audioCtx.destination);
-            o.type = 'sawtooth'; // 哀愁の漂うノコギリ波
+            o.type = 'sawtooth';
             o.frequency.setValueAtTime(n.f, now + n.t);
             g.gain.setValueAtTime(0.35, now + n.t);
             g.gain.linearRampToValueAtTime(0.001, now + n.t + n.d);
@@ -794,7 +893,7 @@
       { avatar: '🦁', bg: '#00bcd4', name: 'ライオン' }
     ];
 
-    const PEER_PREFIX = "goki-poker-room-3digit-v20-";
+    const PEER_PREFIX = "goki-poker-room-3digit-v22-";
 
     let peer = null;
     let connections = {};
@@ -812,7 +911,9 @@
       phase: 'IDLE',
       logs: [],
       lastEvent: null,
-      loserId: null
+      loserId: null,
+      gameCount: 0,
+      history: []
     };
 
     let selectedUniqueId = null;
@@ -825,20 +926,58 @@
       document.getElementById('ruleModal').classList.toggle('active', show);
     }
 
-    function showPopup(title, sub, styleClass = '', duration = 3500) {
+    function toggleRecordModal(show) {
+      playSound('click');
+      if (show) {
+        updateRecordModalContent();
+      }
+      document.getElementById('recordModal').classList.toggle('active', show);
+    }
+
+    // テーブル形式の戦績表示機能
+    function updateRecordModalContent() {
+      const container = document.getElementById('recordContent');
+      if (!gameState.history || gameState.history.length === 0) {
+        container.innerHTML = `<p style="color: #666; font-size: 0.9rem;">まだ対戦記録はありません。</p>`;
+        return;
+      }
+
+      let html = `<p style="font-weight:bold; margin-bottom:8px; color:#333;">総試合数: ${gameState.gameCount}戦</p>`;
+      
+      // プレイヤーごとの集計表
+      html += `<h3>📊 プレイヤー別通算成績</h3>`;
+      html += `<table class="record-table">`;
+      html += `<tr><th>プレイヤー名</th><th>敗北ポイント</th></tr>`;
+      
+      // 敗北ポイントの少ない順にソート
+      const sortedPlayers = [...gameState.players].sort((a, b) => (a.loseCount || 0) - (b.loseCount || 0));
+      sortedPlayers.forEach(p => {
+        html += `<tr><td>${p.name} ${p.id === myId ? '(自分)' : ''}</td><td><strong>${p.loseCount || 0} 回</strong></td></tr>`;
+      });
+      html += `</table>`;
+
+      // 試合ごとの履歴テーブル
+      html += `<h3 style="margin-top:16px;">📜 過去の勝負ログ</h3>`;
+      html += `<table class="record-table">`;
+      html += `<tr><th>第X戦</th><th>敗北者</th><th>敗北理由</th></tr>`;
+      gameState.history.slice().reverse().forEach(h => {
+        html += `<tr><td>第${h.gameNum}戦</td><td style="color:#e74c3c; font-weight:bold;">${h.loserName}</td><td>${h.reason}</td></tr>`;
+      });
+      html += `</table>`;
+
+      container.innerHTML = html;
+    }
+
+    function showPopup(title, bodyHtml, styleClass = '', duration = 3500) {
       const popup = document.getElementById('centerPopup');
       popup.className = `popup-banner ${styleClass} show`;
       document.getElementById('popupTitle').innerText = title;
-      document.getElementById('popupSub').innerText = sub;
+      document.getElementById('popupBody').innerHTML = bodyHtml;
       if (duration > 0) {
         setTimeout(() => {
           popup.classList.remove('show');
         }, duration);
       }
-    }
-
-    function hidePopup() {
-      document.getElementById('centerPopup').classList.remove('show');
     }
 
     function createRoom() {
@@ -868,7 +1007,7 @@
         myId = id;
         if (isHost) {
           setupHostUI();
-          gameState.players.push({ id: myId, name: myName, hand: [], field: createEmptyField() });
+          gameState.players.push({ id: myId, name: myName, hand: [], field: createEmptyField(), loseCount: 0 });
           updateWaitingList();
         } else {
           connectToHost();
@@ -943,7 +1082,7 @@
           return;
         }
         connections[conn.peer] = conn;
-        gameState.players.push({ id: conn.peer, name: data.name, hand: [], field: createEmptyField() });
+        gameState.players.push({ id: conn.peer, name: data.name, hand: [], field: createEmptyField(), loseCount: 0 });
         updateWaitingList();
         broadcastGameState();
       } else if (data.type === 'ACTION') {
@@ -984,7 +1123,7 @@
       const ev = gameState.lastEvent;
 
       if (ev.type === 'START_ROULETTE') {
-        startRouletteAnimation(ev.firstPlayerId, ev.firstPlayerName);
+        startCircularRoulette(ev.firstPlayerId, ev.firstPlayerName);
       } else if (ev.type === 'JUDGE_RESULT') {
         const realCardInfo = CARD_TYPES.find(c => c.id === ev.realCardId);
 
@@ -1024,24 +1163,92 @@
       }
     }
 
-    // ドラムロールルーレット演出
-    function startRouletteAnimation(winnerId, winnerName) {
-      let count = 0;
-      const totalSteps = 20;
-      const playerNames = gameState.players.map(p => p.name);
+    // ぐるぐる回る円形ルーレットのアニメーション
+    function startCircularRoulette(winnerId, winnerName) {
+      const wheelContainerHtml = `
+        <div class="roulette-wheel-container">
+          <div class="roulette-pointer"></div>
+          <canvas id="rouletteCanvas" width="220" height="220"></canvas>
+        </div>
+        <div id="rouletteResultText" style="margin-top:10px; font-size:1.1rem; color:#ffd700; font-weight:bold;">ルーレット回転中...</div>
+      `;
+      showPopup("🎲 最初のプレイヤー決定中", wheelContainerHtml, 'roulette', 3500);
 
-      const interval = setInterval(() => {
-        const randomName = playerNames[count % playerNames.length];
-        showPopup("🎲 最初のプレイヤー決定中...", randomName, 'roulette', 0);
-        playSound('roulette_tick');
-        count++;
+      setTimeout(() => {
+        const canvas = document.getElementById('rouletteCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const players = gameState.players;
+        const numSegments = players.length;
+        const arcSize = (2 * Math.PI) / numSegments;
 
-        if (count >= totalSteps) {
-          clearInterval(interval);
-          playSound('bluff_success');
-          showPopup("🎯 スタートプレイヤー決定！", `最初の出し手は 【${winnerName}】 さんです！`, 'win', 3000);
+        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
+
+        let currentAngle = 0;
+        const winnerIndex = players.findIndex(p => p.id === winnerId);
+        
+        // ターゲット位置（上部ポインター）に当選者が来るような最終角度計算
+        const targetAngle = 1.5 * Math.PI - (winnerIndex * arcSize + arcSize / 2);
+        const totalSpinAngle = 6 * 2 * Math.PI + (targetAngle % (2 * Math.PI));
+
+        let startTime = null;
+        const duration = 2500; // 2.5秒間回転
+
+        function animateWheel(timestamp) {
+          if (!startTime) startTime = timestamp;
+          const elapsed = timestamp - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          
+          // イージング関数（だんだん減速）
+          const easeOut = 1 - Math.pow(1 - progress, 3);
+          const currentRotation = totalSpinAngle * easeOut;
+
+          ctx.clearRect(0, 0, 220, 220);
+          ctx.save();
+          ctx.translate(110, 110);
+          ctx.rotate(currentRotation);
+
+          // セグメント描画
+          players.forEach((p, i) => {
+            const startAngle = i * arcSize;
+            const endAngle = (i + 1) * arcSize;
+
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, 105, startAngle, endAngle);
+            ctx.closePath();
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // テキスト描画
+            ctx.save();
+            ctx.rotate(startAngle + arcSize / 2);
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 13px sans-serif';
+            ctx.fillText(p.name, 90, 5);
+            ctx.restore();
+          });
+
+          ctx.restore();
+
+          if (progress < 1) {
+            playSound('roulette_tick');
+            requestAnimationFrame(animateWheel);
+          } else {
+            playSound('bluff_success');
+            const resText = document.getElementById('rouletteResultText');
+            if (resText) {
+              resText.innerText = `🎯 最初の出し手は 【${winnerName}】 さん！`;
+            }
+          }
         }
-      }, 100);
+
+        requestAnimationFrame(animateWheel);
+      }, 50);
     }
 
     function sendActionToHost(action) {
@@ -1061,7 +1268,22 @@
 
     function requestStartGame() {
       if (!isHost) return;
+      gameState.gameCount = 0;
+      gameState.history = [];
+      gameState.players.forEach(p => p.loseCount = 0);
+      startNewGameRound();
+    }
+
+    function requestRematch() {
+      if (!isHost) return;
+      startNewGameRound();
+    }
+
+    function startNewGameRound() {
+      if (!isHost) return;
       if (gameState.players.length < 2 || gameState.players.length > 6) return;
+
+      gameState.gameCount++;
 
       let deck = [];
       let uidCounter = 1;
@@ -1084,19 +1306,24 @@
         addLog("2人プレイ用ルール: 10枚のカードをランダムに除外しました。");
       }
 
+      gameState.players.forEach(p => {
+        p.hand = [];
+        p.field = createEmptyField();
+      });
+
       let pIdx = 0;
       while (deck.length > 0) {
         gameState.players[pIdx].hand.push(deck.pop());
         pIdx = (pIdx + 1) % gameState.players.length;
       }
 
-      // ランダムに最初のプレイヤーを決定
       const randomStartIdx = Math.floor(Math.random() * gameState.players.length);
       const firstPlayer = gameState.players[randomStartIdx];
 
       gameState.started = true;
       gameState.turnPlayerId = firstPlayer.id;
       gameState.phase = 'IDLE';
+      gameState.loserId = null;
 
       gameState.lastEvent = {
         eventId: Date.now() + "_START",
@@ -1105,7 +1332,7 @@
         firstPlayerName: firstPlayer.name
       };
 
-      addLog(`ゲーム開始！ルーレットで選ばれた最初の出し手は ${firstPlayer.name} さんです。`);
+      addLog(`【第 ${gameState.gameCount} 戦 開始】最初の出し手は ${firstPlayer.name} さんです。`);
       broadcastGameState();
     }
 
@@ -1214,9 +1441,19 @@
 
     function triggerGameOver(loserId, reason) {
       const loser = gameState.players.find(p => p.id === loserId);
+      loser.loseCount = (loser.loseCount || 0) + 1;
+
       gameState.phase = 'GAME_OVER';
       gameState.loserId = loserId;
-      addLog(`【ゲーム終了】 ${reason} ${loser.name} さんの負けです！`);
+
+      gameState.history.push({
+        gameNum: gameState.gameCount,
+        loserId: loserId,
+        loserName: loser.name,
+        reason: reason
+      });
+
+      addLog(`【ゲーム終了】 ${reason} ${loser.name} さんの負けです！（通算敗北: ${loser.loseCount}回）`);
 
       gameState.lastEvent = {
         eventId: Date.now() + "_GAMEOVER",
@@ -1246,20 +1483,37 @@
       const me = gameState.players.find(p => p.id === myId);
 
       const statusEl = document.getElementById('statusMessage');
+      const rematchArea = document.getElementById('hostRematchArea');
+
       if (gameState.phase === 'GAME_OVER') {
         const isWinner = myId !== gameState.loserId;
         const loserName = gameState.players.find(p => p.id === gameState.loserId)?.name || '';
         statusEl.innerText = isWinner ? `🎉 勝利！ (${loserName} さんの敗北)` : `😭 残念...！あなたの敗北です`;
         statusEl.style.borderColor = isWinner ? "var(--success)" : "var(--accent)";
-      } else if (gameState.phase === 'IDLE') {
-        const isMyTurn = gameState.turnPlayerId === myId;
-        statusEl.innerText = isMyTurn ? "👉 あなたの手番です。出したい虫と相手アイコンをタップしてください。" : `⏳ ${getTurnPlayerName()} の手番です...`;
-        statusEl.style.borderColor = isMyTurn ? "var(--success)" : "var(--primary)";
-      } else if (gameState.phase === 'OFFERED') {
-        const isTarget = gameState.activeCard.targetId === myId;
-        const targetName = gameState.players.find(p => p.id === gameState.activeCard.targetId).name;
-        statusEl.innerText = isTarget ? "⚠️ あなたへカードが回されてきました！" : `👀 ${targetName} が回答選択中...`;
-        statusEl.style.borderColor = isTarget ? "var(--warning)" : "var(--primary)";
+
+        if (isHost) {
+          rematchArea.classList.remove('hidden');
+        }
+      } else {
+        rematchArea.classList.add('hidden');
+        if (gameState.phase === 'IDLE') {
+          const isMyTurn = gameState.turnPlayerId === myId;
+          statusEl.innerText = isMyTurn ? "👉 あなたの手番です。出したい虫と相手アイコンをタップしてください。" : `⏳ ${getTurnPlayerName()} の手番です...`;
+          statusEl.style.borderColor = isMyTurn ? "var(--success)" : "var(--primary)";
+        } else if (gameState.phase === 'OFFERED') {
+          const isTarget = gameState.activeCard.targetId === myId;
+          const targetName = gameState.players.find(p => p.id === gameState.activeCard.targetId).name;
+          statusEl.innerText = isTarget ? "⚠️ あなたへカードが回されてきました！" : `👀 ${targetName} が回答選択中...`;
+          statusEl.style.borderColor = isTarget ? "var(--warning)" : "var(--primary)";
+        }
+      }
+
+      let minLoseCount = Infinity;
+      if (gameState.gameCount >= 2) {
+        gameState.players.forEach(p => {
+          const cnt = p.loseCount || 0;
+          if (cnt < minLoseCount) minLoseCount = cnt;
+        });
       }
 
       const othersArea = document.getElementById('otherPlayersArea');
@@ -1277,6 +1531,9 @@
         const canSelect = isMyTurn || isPassTarget;
         const isSelectedTarget = (targetPlayerIdForAction === p.id);
 
+        const hasCrown = (gameState.gameCount >= 2 && (p.loseCount || 0) === minLoseCount);
+        const losePts = p.loseCount || 0;
+
         const pCard = document.createElement('div');
         pCard.className = `player-frame ${isTurn ? 'active' : ''} ${canSelect ? 'selectable' : ''}`;
         if (isSelectedTarget) {
@@ -1285,9 +1542,11 @@
         }
 
         pCard.innerHTML = `
+          ${hasCrown ? '<div class="crown-badge">👑</div>' : ''}
           <div class="player-name-tag">${p.name}</div>
           <div class="avatar-icon-box" style="background: ${theme.bg};">
             ${theme.avatar}
+            <div class="lose-count-badge" title="敗北ポイント">敗${losePts}</div>
             <div class="hand-fan-badge">${p.hand.length}枚</div>
           </div>
           <div class="mini-field-list">

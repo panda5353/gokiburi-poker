@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ごきぶりポーカー Online</title>
+<style>
+  :root {
+    --bg-color: #1e1e2e;
+    --card-bg: #2b2b3d;
+    --accent-color: #e5c07b;
+    --text-color: #f8f8f2;
+    --danger: #e06c75;
+    --success: #98c379;
+    --primary: #61afef;
+  }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+  }
+  h1 { margin: 5px 0 15px 0; font-size: 1.8rem; color: var(--accent-color); text-align: center; }
+  .screen { width: 100%; max-width: 900px; display: none; flex-direction: column; gap: 15px; }
+  .active { display: flex; }
+  
+  /* Setup Screen */
+  .card-panel {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  }
+  .input-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 8px; }
+  label { font-weight: bold; font-size: 0.9rem; }
+  input, select, button {
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #181824;
+    color: #fff;
+    font-size: 1rem;
+  }
+  button {
+    background: var(--primary);
+    color: #1e1e2e;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    transition: 0.2s;
+  }
+  button:hover { opacity: 0.9; transform: translateY(-1px); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  /* Game Board */
+  .game-status {
+    background: #181824;
+    padding: 10px 15px;
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-color);
+    font-size: 0.95rem;
+  }
+  .players-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+  }
+  .player-card {
+    background: var(--card-bg);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    padding: 10px;
+  }
+  .player-card.active-turn { border-color: var(--accent-color); }
+  .player-card.is-me { background: #323246; }
+  .player-name { font-weight: bold; font-size: 1.1rem; margin-bottom: 5px; display: flex; justify-content: space-between; }
+  
+  .field-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    font-size: 0.8rem;
+    margin-top: 8px;
+    background: #181824;
+    padding: 6px;
+    border-radius: 6px;
+  }
+  .field-item { text-align: center; padding: 2px; border-radius: 4px; background: #252535; }
+  .field-item.warning { color: var(--danger); font-weight: bold; }
+
+  /* Hand & Action Panel */
+  .action-area {
+    background: var(--card-bg);
+    padding: 15px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .cards-flex {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .card-btn {
+    min-width: 70px;
+    height: 95px;
+    border-radius: 8px;
+    background: #3a3a52;
+    border: 2px solid #555;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #fff;
+    user-select: none;
+  }
+  .card-btn.selected { border-color: var(--accent-color); background: #4e4e6d; transform: translateY(-4px); }
+  .card-icon { font-size: 1.8rem; margin-bottom: 4px; }
+  .card-name { font-size: 0.75rem; }
+
+  /* Modal / Overlay Action */
+  .pending-card-box {
+    background: #252535;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    border: 1px dashed var(--accent-color);
+  }
+  .btn-group { display: flex; gap: 10px; }
+  .btn-group button { flex: 1; }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-success { background: var(--success); color: #1e1e2e; }
+
+  .log-box {
+    height: 100px;
+    overflow-y: auto;
+    background: #12121c;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    color: #aaa;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+  .log-entry { margin-bottom: 4px; }
+  .log-entry strong { color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>🪲 ごきぶりポーカー Online</h1>
+
+<!-- ログイン・ルーム参加画面 -->
+<div id="setup-screen" class="screen active">
+  <div class="card-panel">
+    <h2>ルーム設定</h2>
+    <div class="input-group">
+      <label>プレイヤー名</label>
+      <input type="text" id="player-name-input" placeholder="名前を入力" maxlength="8">
+    </div>
+    <div class="input-group">
+      <label>3桁の部屋番号 (例: 123)</label>
+      <input type="number" id="room-id-input" placeholder="100-999" min="100" max="999">
+    </div>
+    <div class="btn-group">
+      <button id="join-btn">部屋に入る / 作成する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ゲーム画面 -->
+<div id="game-screen" class="screen">
+  <div class="game-status">
+    <div><strong>部屋番号:</strong> <span id="display-room-id"></span> | <strong>自分の名前:</strong> <span id="display-my-name"></span></div>
+    <div id="status-message" style="margin-top: 5px; color: var(--accent-color); font-weight: bold;">他のプレイヤーの参加を待っています...</div>
+  </div>
+
+  <!-- プレイヤー一覧と場のカード -->
+  <div id="players-container" class="players-grid"></div>
+
+  <!-- アクションエリア（手番時・受け取り時に表示） -->
+  <div class="action-area">
+    <h3>アクション</h3>
+
+    <!-- 1. カードを差し出すフェーズ -->
+    <div id="phase-send" style="display: none;">
+      <p style="font-size:0.9rem; margin-top:0;">1. 出すカードを選択 ➔ 2. 相手を選択 ➔ 3. 宣言して送る</p>
+      <div id="my-hand" class="cards-flex"></div>
+      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+        <select id="target-player-select"><option value="">渡す相手を選択</option></select>
+        <select id="declare-type-select"><option value="">宣言する種類を選択</option></select>
+        <button id="send-card-btn" disabled>カードを渡す</button>
+      </div>
+    </div>
+
+    <!-- 2. カードを受け取る/判定するフェーズ -->
+    <div id="phase-respond" style="display: none;">
+      <div class="pending-card-box">
+        <p><strong id="sender-name">--</strong> からカードが届きました！</p>
+        <p>宣言: <strong id="declared-species-text" style="color:var(--accent-color); font-size:1.2rem;">--</strong></p>
+      </div>
+      <div style="margin-top:10px;" class="btn-group">
+        <button id="guess-true-btn" class="btn-success">「本当」と予想</button>
+        <button id="guess-false-btn" class="btn-danger">「嘘」と予想</button>
+      </div>
+      <div style="margin-top:10px; border-top:1px solid #333; padding-top:10px;">
+        <p style="font-size:0.85rem; margin-bottom:5px;">またはカードをこっそり見て他人にパスする：</p>
+        <button id="peek-btn" style="background:#4e4e6d;">中身をコッソリ確認する</button>
+        <div id="pass-controls" style="display:none; margin-top:10px;">
+          <p style="font-size:0.85rem; color:var(--accent-color);">実際のカード: <span id="actual-card-text"></span></p>
+          <div style="display:flex; gap:8px;">
+            <select id="pass-target-select"><option value="">パスする相手</option></select>
+            <select id="pass-declare-select"><option value="">新たな宣言</option></select>
+            <button id="pass-card-btn">パス実行</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 待機フェーズ -->
+    <div id="phase-wait">
+      <p style="color:#aaa; text-align:center; margin:10px 0;">現在他のプレイヤーのアクションを待っています...</p>
+    </div>
+  </div>
+
+  <!-- ゲームログ -->
+  <div class="log-box" id="log-box"></div>
+</div>
+
+<script>
+// 嫌われ者8種定義
+const SPECIES = [
+  { id: 'cockroach', name: 'ゴキブリ', icon: '🪲' },
+  { id: 'spider',    name: 'クモ',     icon: '🕷️' },
+  { id: 'stinkbug',  name: 'カメムシ', icon: '🪲' },
+  { id: 'rat',       name: 'ネズミ',   icon: '🐀' },
+  { id: 'scorpion', name: 'サソリ',   icon: '🦂' },
+  { id: 'fly',        name: 'ハエ',     icon: '🪰' },
+  { id: 'bat',        name: 'コウモリ', icon: '🦇' },
+  { id: 'frog',       name: 'カエル',   icon: '🐸' }
+];
+
+// 簡易ローカルストレージベースの擬似ネットワーク同期（GitHub Pagesなどの静的ホスティングで同一PC/ブラウザ間検証用）
+// ※実際に遠隔地の友達と通信する場合はBroadcastChannel/Firebase等を使用します。
+class GameStateStore {
+  constructor(roomId) {
+    this.key = `gokiburi_room_${roomId}`;
+  }
+  get() {
+    const data = localStorage.getItem(this.key);
+    return data ? JSON.parse(data) : null;
+  }
+  set(state) {
+    localStorage.setItem(this.key, JSON.stringify(state));
+    window.dispatchEvent(new Event('storage'));
+  }
+}
+
+let roomId = null;
+let myPlayerId = null;
+let myName = '';
+let store = null;
+let selectedHandIndex = null;
+
+// 要素の取得
+const setupScreen = document.getElementById('setup-screen');
+const gameScreen = document.getElementById('game-screen');
+const playerNameInput = document.getElementById('player-name-input');
+const roomIdInput = document.getElementById('room-id-input');
+const joinBtn = document.getElementById('join-btn');
+
+joinBtn.addEventListener('click', () => {
+  myName = playerNameInput.value.trim();
+  const roomVal = parseInt(roomIdInput.value);
+
+  if (!myName) return alert('名前を入力してください');
+  if (isNaN(roomVal) || roomVal < 100 || roomVal > 999) return alert('3桁の部屋番号(100-999)を入力してください');
+
+  roomId = roomVal;
+  myPlayerId = 'p_' + Math.random().toString(36).substr(2, 9);
+  store = new GameStateStore(roomId);
+
+  setupScreen.classList.remove('active');
+  gameScreen.classList.add('active');
+
+  document.getElementById('display-room-id').innerText = roomId;
+  document.getElementById('display-my-name').innerText = myName;
+
+  initOrJoinRoom();
+});
+
+function initOrJoinRoom() {
+  let state = store.get();
+  if (!state) {
+    // 新規部屋作成
+    state = {
+      status: 'waiting', // waiting, playing, ended
+      players: [],
+      deck: [],
+      activePlayerId: null,
+      pendingCard: null, // { senderId, targetId, card, declaration, history: [] }
+      logs: ['部屋を作成しました。3桁の部屋番号を友達に共有してください。']
+    };
+  }
+
+  // プレイヤー追加
+  if (!state.players.find(p => p.id === myPlayerId)) {
+    state.players.push({
+      id: myPlayerId,
+      name: myName,
+      hand: [],
+      field: SPECIES.reduce((acc, s) => ({ ...acc, [s.id]: 0 }), {})
+    });
+    state.logs.unshift(`${myName} が参加しました。`);
+  }
+
+  // プレイヤーが複数集まったら自動開始 (デモ用に2人以上で開始可能ボタン設置)
+  store.set(state);
+  render();
+
+  // 状態監視
+  window.addEventListener('storage', () => render());
+  setInterval(() => render(), 1000); // ポーリング補填
+}
+
+function startGame() {
+  let state = store.get();
+  if (state.players.length < 2) return alert('最低2名必要です');
+
+  // 1. 山札生成 (8種 x 8枚 = 64枚)
+  let deck = [];
+  SPECIES.forEach(s => {
+    for (let i = 0; i < 8; i++) deck.push(s.id);
+  });
+  // シャッフル
+  deck.sort(() => Math.random() - 0.5);
+
+  // 2人プレイの場合の特殊ルール (10枚ランダム除外)
+  if (state.players.length === 2) {
+    deck = deck.slice(10);
+  }
+
+  // 2. カード配分
+  let pIdx = 0;
+  while (deck.length > 0) {
+    state.players[pIdx].hand.push(deck.pop());
+    pIdx = (pIdx + 1) % state.players.length;
+  }
+
+  // 3. ランダムなスタートプレイヤー決定
+  const randomStartIndex = Math.floor(Math.random() * state.players.length);
+  state.activePlayerId = state.players[randomStartIndex].id;
+
+  state.status = 'playing';
+  state.logs.unshift(`ゲーム開始！最初の出し手は ${state.players[randomStartIndex].name} です。`);
+  
+  store.set(state);
+  render();
+}
+
+function render() {
+  const state = store.get();
+  if (!state) return;
+
+  const statusMsg = document.getElementById('status-message');
+  const playersContainer = document.getElementById('players-container');
+
+  // スタートボタン表示制御
+  if (state.status === 'waiting') {
+    statusMsg.innerHTML = `参加待ち (${state.players.length}名) ` + 
+      (state.players[0].id === myPlayerId ? `<button onclick="startGame()">ゲーム開始</button>` : '');
+  } else if (state.status === 'playing') {
+    const activeP = state.players.find(p => p.id === state.activePlayerId);
+    statusMsg.innerText = `現在の出し手: ${activeP ? activeP.name : ''}`;
+  } else if (state.status === 'ended') {
+    statusMsg.innerText = `ゲーム終了！ 敗者: ${state.loserName}`;
+  }
+
+  // プレイヤー一覧
+  playersContainer.innerHTML = '';
+  state.players.forEach(p => {
+    const pCard = document.createElement('div');
+    pCard.className = `player-card ${p.id === state.activePlayerId ? 'active-turn' : ''} ${p.id === myPlayerId ? 'is-me' : ''}`;
+    
+    let fieldHtml = SPECIES.map(s => {
+      const count = p.field[s.id] || 0;
+      const limit = state.players.length === 2 ? 5 : 4;
+      const isWarn = count >= limit - 1;
+      return `<div class="field-item ${isWarn ? 'warning' : ''}">${s.icon}${count}</div>`;
+    }).join('');
+
+    pCard.innerHTML = `
+      <div class="player-name">
+        <span>${p.name} ${p.id === myPlayerId ? '(自分)' : ''}</span>
+        <span style="font-size:0.8rem; color:#aaa;">手札:${p.hand.length}枚</span>
+      </div>
+      <div class="field-cards">${fieldHtml}</div>
+    `;
+    playersContainer.appendChild(pCard);
+  });
+
+  // ログ更新
+  const logBox = document.getElementById('log-box');
+  logBox.innerHTML = state.logs.map(l => `<div class="log-entry">${l}</div>`).join('');
+
+  // アクションフェーズ分岐
+  const phaseSend = document.getElementById('phase-send');
+  const phaseRespond = document.getElementById('phase-respond');
+  const phaseWait = document.getElementById('phase-wait');
+
+  phaseSend.style.display = 'none';
+  phaseRespond.style.display = 'none';
+  phaseWait.style.display = 'none';
+
+  if (state.status === 'playing') {
+    if (state.pendingCard) {
+      // カードが提示されている最中
+      if (state.pendingCard.targetId === myPlayerId) {
+        phaseRespond.style.display = 'block';
+        setupRespondPhase(state);
+      } else {
+        phaseWait.style.display = 'block';
+      }
+    } else if (state.activePlayerId === myPlayerId) {
+      // 自分の手番でカードを出す
+      phaseSend.style.display = 'block';
+      setupSendPhase(state);
+    } else {
+      phaseWait.style.display = 'block';
+    }
+  }
+}
+
+// カード提出のセットアップ
+function setupSendPhase(state) {
+  const me = state.players.find(p => p.id === myPlayerId);
+  const handDiv = document.getElementById('my-hand');
+  handDiv.innerHTML = '';
+
+  me.hand.forEach((cardId, index) => {
+    const sp = SPECIES.find(s => s.id === cardId);
+    const cBtn = document.createElement('div');
+    cBtn.className = `card-btn ${selectedHandIndex === index ? 'selected' : ''}`;
+    cBtn.innerHTML = `<div class="card-icon">${sp.icon}</div><div class="card-name">${sp.name}</div>`;
+    cBtn.onclick = () => {
+      selectedHandIndex = index;
+      setupSendPhase(state);
+      checkSendValid();
+    };
+    handDiv.appendChild(cBtn);
+  });
+
+  // 相手セレクト
+  const targetSelect = document.getElementById('target-player-select');
+  targetSelect.innerHTML = '<option value="">渡す相手を選択</option>';
+  state.players.filter(p => p.id !== myPlayerId).forEach(p => {
+    targetSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+  });
+
+  // 宣言セレクト
+  const declareSelect = document.getElementById('declare-type-select');
+  declareSelect.innerHTML = '<option value="">宣言する種類を選択</option>';
+  SPECIES.forEach(s => {
+    declareSelect.innerHTML += `<option value="${s.id}">${s.icon} ${s.name}</option>`;
+  });
+
+  targetSelect.onchange = checkSendValid;
+  declareSelect.onchange = checkSendValid;
+
+  document.getElementById('send-card-btn').onclick = () => {
+    const targetId = targetSelect.value;
+    const declareId = declareSelect.value;
+    const cardId = me.hand.splice(selectedHandIndex, 1)[0];
+
+    state.pendingCard = {
+      senderId: myPlayerId,
+      targetId: targetId,
+      card: cardId,
+      declaration: declareId,
+      history: [myPlayerId]
+    };
+
+    const targetName = state.players.find(p => p.id === targetId).name;
+    const decName = SPECIES.find(s => s.id === declareId).name;
+    state.logs.unshift(`${me.name} ➔ ${targetName} へカードを渡しました (宣言: 「${decName}」)`);
+    selectedHandIndex = null;
+    
+    store.set(state);
+    render();
+  };
+}
+
+function checkSendValid() {
+  const targetId = document.getElementById('target-player-select').value;
+  const declareId = document.getElementById('declare-type-select').value;
+  document.getElementById('send-card-btn').disabled = !(selectedHandIndex !== null && targetId && declareId);
+}
+
+// 受け取り・判定のセットアップ
+function setupRespondPhase(state) {
+  const pc = state.pendingCard;
+  const sender = state.players.find(p => p.id === pc.senderId);
+  const decSp = SPECIES.find(s => s.id === pc.declaration);
+  const actualSp = SPECIES.find(s => s.id === pc.card);
+
+  document.getElementById('sender-name').innerText = sender.name;
+  document.getElementById('declared-species-text').innerText = `${decSp.icon} ${decSp.name}`;
+  document.getElementById('pass-controls').style.display = 'none';
+
+  // 当て判定
+  document.getElementById('guess-true-btn').onclick = () => resolveGuess(true);
+  document.getElementById('guess-false-btn').onclick = () => resolveGuess(false);
+
+  // パス用確認
+  document.getElementById('peek-btn').onclick = () => {
+    document.getElementById('actual-card-text').innerText = `${actualSp.icon} ${actualSp.name}`;
+    document.getElementById('pass-controls').style.display = 'block';
+
+    // パス対象セレクト（過去にこのターンでカードが渡った人を除く）
+    const passSelect = document.getElementById('pass-target-select');
+    passSelect.innerHTML = '<option value="">パスする相手</option>';
+    state.players.filter(p => !pc.history.includes(p.id)).forEach(p => {
+      passSelect.innerHTML += `<option value="${p.id}">${p.name}</option>`;
+    });
+
+    // 最後の1人ならパス不可にする
+    if (passSelect.children.length <= 1) {
+      passSelect.innerHTML = '<option value="">(全員パス済みのためパス不可)</option>';
+      document.getElementById('pass-card-btn').disabled = true;
+    } else {
+      document.getElementById('pass-card-btn').disabled = false;
+    }
+
+    const passDeclareSelect = document.getElementById('pass-declare-select');
+    passDeclareSelect.innerHTML = '<option value="">新たな宣言</option>';
+    SPECIES.forEach(s => {
+      passDeclareSelect.innerHTML += `<option value="${s.id}">${s.icon} ${s.name}</option>`;
+    });
+  };
+
+  document.getElementById('pass-card-btn').onclick = () => {
+    const newTargetId = document.getElementById('pass-target-select').value;
+    const newDeclareId = document.getElementById('pass-declare-select').value;
+    if (!newTargetId || !newDeclareId) return alert('パス相手と宣言を選択してください');
+
+    pc.history.push(myPlayerId);
+    pc.senderId = myPlayerId;
+    pc.targetId = newTargetId;
+    pc.declaration = newDeclareId;
+
+    const myP = state.players.find(p => p.id === myPlayerId);
+    const targetP = state.players.find(p => p.id === newTargetId);
+    const decP = SPECIES.find(s => s.id === newDeclareId);
+
+    state.logs.unshift(`${myP.name} はカードを確認し、${targetP.name} へパスしました (宣言: 「${decP.name}」)`);
+    store.set(state);
+    render();
+  };
+}
+
+function resolveGuess(guessedTrue) {
+  const state = store.get();
+  const pc = state.pendingCard;
+  const isActualTrue = (pc.card === pc.declaration);
+  const isCorrect = (guessedTrue === isActualTrue);
+
+  const me = state.players.find(p => p.id === myPlayerId);
+  const sender = state.players.find(p => p.id === pc.senderId);
+  const actualSp = SPECIES.find(s => s.id === pc.card);
+
+  let loser = isCorrect ? sender : me;
+  loser.field[pc.card] = (loser.field[pc.card] || 0) + 1;
+
+  state.logs.unshift(
+    `判定結果: 正解は ${actualSp.icon} ${actualSp.name}！ ` +
+    `${me.name} は 「${guessedTrue ? '本当' : '嘘'}」 と予想して ${isCorrect ? '【的中】' : '【ハズレ】'}。` +
+    `カードは ${loser.name} の場に置かれました。`
+  );
+
+  state.activePlayerId = loser.id; // カードを引き取った人が次の出し手
+  state.pendingCard = null;
+
+  checkGameOver(state, loser);
+  store.set(state);
+  render();
+}
+
+// 勝敗判定
+function checkGameOver(state, lastLoser) {
+  const isTwoPlayer = state.players.length === 2;
+  const winLimit = isTwoPlayer ? 5 : 4;
+
+  let isGameOver = false;
+
+  // 1. 同種カードが規定枚数揃ったか
+  Object.values(lastLoser.field).forEach(count => {
+    if (count >= winLimit) isGameOver = true;
+  });
+
+  // 2. 8種類すべて揃ったか
+  const speciesTypesCount = Object.values(lastLoser.field).filter(c => c > 0).length;
+  if (speciesTypesCount === 8) isGameOver = true;
+
+  // 3. 次の手番の人の手札が0枚か
+  const nextPlayer = state.players.find(p => p.id === state.activePlayerId);
+  if (nextPlayer.hand.length === 0) {
+    isGameOver = true;
+    state.logs.unshift(`${nextPlayer.name} の手札がなくなりました！`);
+  }
+
+  if (isGameOver) {
+    state.status = 'ended';
+    state.loserName = lastLoser.name;
+    state.logs.unshift(`🎉 ゲーム終了！ 敗者は 【 ${lastLoser.name} 】 です！`);
+  }
+}
+</script>
+</body>
+</html>

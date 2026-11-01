@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ごきぶりポーカー Online v2.1</title>
+  <title>ごきぶりポーカー Online v2.0</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     :root {
@@ -59,21 +59,6 @@
       font-size: 0.85rem;
     }
     .bgm-btn.off { background: #7f8c8d; }
-    
-    .record-btn {
-      background: #8e44ad;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-      transition: all 0.2s;
-      font-size: 0.85rem;
-    }
-    .record-btn:hover { opacity: 0.9; transform: translateY(-1px); }
-
     .rule-btn {
       background: var(--warning);
       color: white;
@@ -260,37 +245,6 @@
       border: 2px solid rgba(255,255,255,0.4);
       position: relative;
       margin-bottom: 4px;
-    }
-
-    /* 王冠 👑 スタイル */
-    .crown-badge {
-      position: absolute;
-      top: -12px;
-      right: -8px;
-      font-size: 1.1rem;
-      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
-      z-index: 15;
-      animation: crown-bounce 2s infinite ease-in-out;
-    }
-    @keyframes crown-bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-3px); }
-    }
-
-    /* 負けポイントバッジ (右上) */
-    .lose-count-badge {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      background: #e74c3c;
-      color: white;
-      font-size: 0.65rem;
-      font-weight: bold;
-      padding: 1px 5px;
-      border-radius: 8px;
-      border: 1px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      z-index: 12;
     }
 
     .hand-fan-badge {
@@ -508,10 +462,9 @@
   </div>
 
   <header>
-    <div class="logo">🪳 ごきぶりポーカー Online <span style="font-size: 0.8rem; color: #ffd700; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">v2.1</span></div>
+    <div class="logo">🪳 ごきぶりポーカー Online <span style="font-size: 0.8rem; color: #ffd700; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">v2.0</span></div>
     <div class="header-btns">
       <button class="bgm-btn" id="bgmToggleBtn" onclick="toggleBGM()">🎵 BGM: ON</button>
-      <button class="record-btn" onclick="toggleRecordModal(true)">🏆 戦績</button>
       <button class="rule-btn" onclick="toggleModal(true)">📖 ルール確認</button>
     </div>
   </header>
@@ -523,21 +476,9 @@
     </div>
   </div>
 
-  <!-- 戦績モーダル -->
-  <div class="modal-overlay" id="recordModal">
-    <div class="modal">
-      <h2>🏆 対戦成績・勝敗記録</h2>
-      <div id="recordContent" style="margin-bottom: 15px;">
-        <p style="color: #666; font-size: 0.9rem;">まだ対戦記録はありません。</p>
-      </div>
-      <button class="modal-close" onclick="toggleRecordModal(false)">閉じる</button>
-    </div>
-  </div>
-
-  <!-- ルールモーダル -->
   <div class="modal-overlay" id="ruleModal">
     <div class="modal">
-      <h2>ごきぶりポーカー ルール v2.1</h2>
+      <h2>ごきぶりポーカー ルール v2.0</h2>
       <h3>基本概要</h3>
       <p>嫌われ者カードを押し付け合い、敗者1人を決めるブラフゲームです。</p>
       
@@ -623,11 +564,6 @@
         <div class="action-group" id="actionButtons"></div>
       </div>
 
-      <!-- ホスト専用 再戦ボタンエリア -->
-      <div id="hostRematchArea" class="hidden" style="text-align: center; margin: 6px 0;">
-        <button class="btn btn-success" style="max-width: 300px; margin: 0 auto; background: #27ae60; font-size: 1.05rem;" onclick="playSound('click'); requestRematch();">🔄 もう一度遊ぶ (再戦)</button>
-      </div>
-
       <div class="my-hand-section">
         <div class="hand-grid-container" id="myHandCards"></div>
 
@@ -647,7 +583,7 @@
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // --- YouTube BGM ＆ 効果音エンジン (v2.1) ---
+    // --- YouTube BGM ＆ 効果音エンジン (v2.0 SE音量調整＆音分離) ---
     let ytPlayer = null;
     let isBgmPlaying = true;
     let ytReady = false;
@@ -669,7 +605,7 @@
         events: {
           'onReady': (event) => {
             ytReady = true;
-            event.target.setVolume(18);
+            event.target.setVolume(18); // BGM音量を抑えめに設定
             if (isBgmPlaying) {
               event.target.playVideo();
             }
@@ -721,6 +657,7 @@
       }
     }
 
+    // 効果音用 Web Audio API (SE音量強化＆明確な勝敗音分離)
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) {
@@ -785,11 +722,12 @@
             o.stop(now + i * 0.08 + 0.15);
           });
         } else if (type === 'win') {
+          // 華やかな勝利用ファンファーレ (明るい和音コード進行)
           const chordNotes = [
-            [523.25, 659.25, 783.99],
-            [587.33, 698.46, 880.00],
-            [659.25, 830.61, 987.77],
-            [523.25, 659.25, 783.99, 1046.50]
+            [523.25, 659.25, 783.99], // C
+            [587.33, 698.46, 880.00], // Dm
+            [659.25, 830.61, 987.77], // Em
+            [523.25, 659.25, 783.99, 1046.50] // C High
           ];
           const times = [0, 0.18, 0.36, 0.6];
           const durations = [0.16, 0.16, 0.2, 0.7];
@@ -809,6 +747,7 @@
             });
           });
         } else if (type === 'lose') {
+          // 重厚で悲しい敗北用サウンド (不協和音を含む重い音階)
           const notes = [
             { f: 311.13, t: 0, d: 0.25 },
             { f: 293.66, t: 0.25, d: 0.25 },
@@ -821,7 +760,7 @@
             const g = audioCtx.createGain();
             o.connect(g);
             g.connect(audioCtx.destination);
-            o.type = 'sawtooth';
+            o.type = 'sawtooth'; // 哀愁の漂うノコギリ波
             o.frequency.setValueAtTime(n.f, now + n.t);
             g.gain.setValueAtTime(0.35, now + n.t);
             g.gain.linearRampToValueAtTime(0.001, now + n.t + n.d);
@@ -855,7 +794,7 @@
       { avatar: '🦁', bg: '#00bcd4', name: 'ライオン' }
     ];
 
-    const PEER_PREFIX = "goki-poker-room-3digit-v21-";
+    const PEER_PREFIX = "goki-poker-room-3digit-v20-";
 
     let peer = null;
     let connections = {};
@@ -873,9 +812,7 @@
       phase: 'IDLE',
       logs: [],
       lastEvent: null,
-      loserId: null,
-      gameCount: 0,
-      history: []
+      loserId: null
     };
 
     let selectedUniqueId = null;
@@ -888,36 +825,6 @@
       document.getElementById('ruleModal').classList.toggle('active', show);
     }
 
-    function toggleRecordModal(show) {
-      playSound('click');
-      if (show) {
-        updateRecordModalContent();
-      }
-      document.getElementById('recordModal').classList.toggle('active', show);
-    }
-
-    function updateRecordModalContent() {
-      const container = document.getElementById('recordContent');
-      if (!gameState.history || gameState.history.length === 0) {
-        container.innerHTML = `<p style="color: #666; font-size: 0.9rem;">まだ対戦記録はありません。</p>`;
-        return;
-      }
-
-      let html = `<p style="font-weight:bold; margin-bottom:8px; color:#333;">総試合数: ${gameState.gameCount}戦</p>`;
-      html += `<div style="max-height: 250px; overflow-y: auto;">`;
-      
-      gameState.history.slice().reverse().forEach((h) => {
-        html += `
-          <div style="background: #f8f9fa; border-left: 4px solid #e74c3c; padding: 8px; margin-bottom: 6px; border-radius: 4px; font-size: 0.85rem; color:#333;">
-            <strong>第 ${h.gameNum} 戦</strong><br>
-            敗北: <span style="color:#e74c3c; font-weight:bold;">${h.loserName}</span> (${h.reason})
-          </div>
-        `;
-      });
-      html += `</div>`;
-      container.innerHTML = html;
-    }
-
     function showPopup(title, sub, styleClass = '', duration = 3500) {
       const popup = document.getElementById('centerPopup');
       popup.className = `popup-banner ${styleClass} show`;
@@ -928,6 +835,10 @@
           popup.classList.remove('show');
         }, duration);
       }
+    }
+
+    function hidePopup() {
+      document.getElementById('centerPopup').classList.remove('show');
     }
 
     function createRoom() {
@@ -957,7 +868,7 @@
         myId = id;
         if (isHost) {
           setupHostUI();
-          gameState.players.push({ id: myId, name: myName, hand: [], field: createEmptyField(), loseCount: 0 });
+          gameState.players.push({ id: myId, name: myName, hand: [], field: createEmptyField() });
           updateWaitingList();
         } else {
           connectToHost();
@@ -1032,13 +943,11 @@
           return;
         }
         connections[conn.peer] = conn;
-        gameState.players.push({ id: conn.peer, name: data.name, hand: [], field: createEmptyField(), loseCount: 0 });
+        gameState.players.push({ id: conn.peer, name: data.name, hand: [], field: createEmptyField() });
         updateWaitingList();
         broadcastGameState();
       } else if (data.type === 'ACTION') {
         handlePlayerAction(conn.peer, data.action);
-      } else if (data.type === 'REMATCH') {
-        if (isHost) startNewGameRound();
       }
     }
 
@@ -1115,6 +1024,7 @@
       }
     }
 
+    // ドラムロールルーレット演出
     function startRouletteAnimation(winnerId, winnerName) {
       let count = 0;
       const totalSteps = 20;
@@ -1151,22 +1061,7 @@
 
     function requestStartGame() {
       if (!isHost) return;
-      gameState.gameCount = 0;
-      gameState.history = [];
-      gameState.players.forEach(p => p.loseCount = 0);
-      startNewGameRound();
-    }
-
-    function requestRematch() {
-      if (!isHost) return;
-      startNewGameRound();
-    }
-
-    function startNewGameRound() {
-      if (!isHost) return;
       if (gameState.players.length < 2 || gameState.players.length > 6) return;
-
-      gameState.gameCount++;
 
       let deck = [];
       let uidCounter = 1;
@@ -1189,24 +1084,19 @@
         addLog("2人プレイ用ルール: 10枚のカードをランダムに除外しました。");
       }
 
-      gameState.players.forEach(p => {
-        p.hand = [];
-        p.field = createEmptyField();
-      });
-
       let pIdx = 0;
       while (deck.length > 0) {
         gameState.players[pIdx].hand.push(deck.pop());
         pIdx = (pIdx + 1) % gameState.players.length;
       }
 
+      // ランダムに最初のプレイヤーを決定
       const randomStartIdx = Math.floor(Math.random() * gameState.players.length);
       const firstPlayer = gameState.players[randomStartIdx];
 
       gameState.started = true;
       gameState.turnPlayerId = firstPlayer.id;
       gameState.phase = 'IDLE';
-      gameState.loserId = null;
 
       gameState.lastEvent = {
         eventId: Date.now() + "_START",
@@ -1215,7 +1105,7 @@
         firstPlayerName: firstPlayer.name
       };
 
-      addLog(`【第 ${gameState.gameCount} 戦 開始】最初の出し手は ${firstPlayer.name} さんです。`);
+      addLog(`ゲーム開始！ルーレットで選ばれた最初の出し手は ${firstPlayer.name} さんです。`);
       broadcastGameState();
     }
 
@@ -1324,19 +1214,9 @@
 
     function triggerGameOver(loserId, reason) {
       const loser = gameState.players.find(p => p.id === loserId);
-      loser.loseCount = (loser.loseCount || 0) + 1;
-
       gameState.phase = 'GAME_OVER';
       gameState.loserId = loserId;
-
-      gameState.history.push({
-        gameNum: gameState.gameCount,
-        loserId: loserId,
-        loserName: loser.name,
-        reason: reason
-      });
-
-      addLog(`【ゲーム終了】 ${reason} ${loser.name} さんの負けです！（通算敗北: ${loser.loseCount}回）`);
+      addLog(`【ゲーム終了】 ${reason} ${loser.name} さんの負けです！`);
 
       gameState.lastEvent = {
         eventId: Date.now() + "_GAMEOVER",
@@ -1366,37 +1246,20 @@
       const me = gameState.players.find(p => p.id === myId);
 
       const statusEl = document.getElementById('statusMessage');
-      const rematchArea = document.getElementById('hostRematchArea');
-
       if (gameState.phase === 'GAME_OVER') {
         const isWinner = myId !== gameState.loserId;
         const loserName = gameState.players.find(p => p.id === gameState.loserId)?.name || '';
         statusEl.innerText = isWinner ? `🎉 勝利！ (${loserName} さんの敗北)` : `😭 残念...！あなたの敗北です`;
         statusEl.style.borderColor = isWinner ? "var(--success)" : "var(--accent)";
-
-        if (isHost) {
-          rematchArea.classList.remove('hidden');
-        }
-      } else {
-        rematchArea.classList.add('hidden');
-        if (gameState.phase === 'IDLE') {
-          const isMyTurn = gameState.turnPlayerId === myId;
-          statusEl.innerText = isMyTurn ? "👉 あなたの手番です。出したい虫と相手アイコンをタップしてください。" : `⏳ ${getTurnPlayerName()} の手番です...`;
-          statusEl.style.borderColor = isMyTurn ? "var(--success)" : "var(--primary)";
-        } else if (gameState.phase === 'OFFERED') {
-          const isTarget = gameState.activeCard.targetId === myId;
-          const targetName = gameState.players.find(p => p.id === gameState.activeCard.targetId).name;
-          statusEl.innerText = isTarget ? "⚠️ あなたへカードが回されてきました！" : `👀 ${targetName} が回答選択中...`;
-          statusEl.style.borderColor = isTarget ? "var(--warning)" : "var(--primary)";
-        }
-      }
-
-      let minLoseCount = Infinity;
-      if (gameState.gameCount >= 2) {
-        gameState.players.forEach(p => {
-          const cnt = p.loseCount || 0;
-          if (cnt < minLoseCount) minLoseCount = cnt;
-        });
+      } else if (gameState.phase === 'IDLE') {
+        const isMyTurn = gameState.turnPlayerId === myId;
+        statusEl.innerText = isMyTurn ? "👉 あなたの手番です。出したい虫と相手アイコンをタップしてください。" : `⏳ ${getTurnPlayerName()} の手番です...`;
+        statusEl.style.borderColor = isMyTurn ? "var(--success)" : "var(--primary)";
+      } else if (gameState.phase === 'OFFERED') {
+        const isTarget = gameState.activeCard.targetId === myId;
+        const targetName = gameState.players.find(p => p.id === gameState.activeCard.targetId).name;
+        statusEl.innerText = isTarget ? "⚠️ あなたへカードが回されてきました！" : `👀 ${targetName} が回答選択中...`;
+        statusEl.style.borderColor = isTarget ? "var(--warning)" : "var(--primary)";
       }
 
       const othersArea = document.getElementById('otherPlayersArea');
@@ -1414,9 +1277,6 @@
         const canSelect = isMyTurn || isPassTarget;
         const isSelectedTarget = (targetPlayerIdForAction === p.id);
 
-        const hasCrown = (gameState.gameCount >= 2 && (p.loseCount || 0) === minLoseCount);
-        const losePts = p.loseCount || 0;
-
         const pCard = document.createElement('div');
         pCard.className = `player-frame ${isTurn ? 'active' : ''} ${canSelect ? 'selectable' : ''}`;
         if (isSelectedTarget) {
@@ -1425,11 +1285,9 @@
         }
 
         pCard.innerHTML = `
-          ${hasCrown ? '<div class="crown-badge">👑</div>' : ''}
           <div class="player-name-tag">${p.name}</div>
           <div class="avatar-icon-box" style="background: ${theme.bg};">
             ${theme.avatar}
-            <div class="lose-count-badge" title="負けポイント">敗${losePts}</div>
             <div class="hand-fan-badge">${p.hand.length}枚</div>
           </div>
           <div class="mini-field-list">

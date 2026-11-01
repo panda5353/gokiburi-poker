@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ごきぶりポーカー Online v2.2</title>
+  <title>ごきぶりポーカー Online v2.3</title>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <style>
     :root {
@@ -126,7 +126,6 @@
       cursor: pointer;
     }
 
-    /* 戦績テーブルスタイル */
     .record-table {
       width: 100%;
       border-collapse: collapse;
@@ -417,7 +416,6 @@
     .card-scorpion  { border-color: #ef5350; background: #ffebee; color: #b71c1c; }
     .card-stinkbug  { border-color: #827717; background: #f9fbe7; color: #827717; }
 
-    /* ぐるぐる円形ルーレット用モーダル・キャンバス */
     .popup-overlay {
       position: fixed;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -446,7 +444,6 @@
     .popup-banner.roulette { border-color: #ffd700; background: rgba(20, 30, 60, 0.95); }
     .popup-title { font-size: 1.5rem; font-weight: bold; margin-bottom: 12px; }
 
-    /* 円形ルーレット盤面スタイル */
     .roulette-wheel-container {
       position: relative;
       width: 220px;
@@ -551,7 +548,7 @@
   </div>
 
   <header>
-    <div class="logo">🪳 ごきぶりポーカー Online <span style="font-size: 0.8rem; color: #ffd700; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">v2.2</span></div>
+    <div class="logo">🪳 ごきぶりポーカー Online <span style="font-size: 0.8rem; color: #ffd700; background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px;">v2.3</span></div>
     <div class="header-btns">
       <button class="bgm-btn" id="bgmToggleBtn" onclick="toggleBGM()">🎵 BGM: ON</button>
       <button class="record-btn" onclick="toggleRecordModal(true)">🏆 戦績</button>
@@ -559,7 +556,6 @@
     </div>
   </header>
 
-  <!-- ポップアップ／円形ルーレット表示エリア -->
   <div class="popup-overlay">
     <div class="popup-banner" id="centerPopup">
       <div class="popup-title" id="popupTitle">メッセージ</div>
@@ -569,7 +565,7 @@
     </div>
   </div>
 
-  <!-- 戦績モーダル（表形式） -->
+  <!-- 戦績モーダル -->
   <div class="modal-overlay" id="recordModal">
     <div class="modal">
       <h2>🏆 対戦成績・勝敗記録</h2>
@@ -583,9 +579,9 @@
   <!-- ルールモーダル -->
   <div class="modal-overlay" id="ruleModal">
     <div class="modal">
-      <h2>ごきぶりポーカー ルール v2.2</h2>
+      <h2>ごきぶりポーカー ルール v2.3</h2>
       <h3>基本概要</h3>
-      <p>嫌われ者カードを押し付け合い、敗者1人を決めるブラフゲームです。v2.2では円形ルーレットと表形式の戦績に対応！</p>
+      <p>嫌われ者カードを押し付け合い、敗者1人を決めるブラフゲームです。</p>
       
       <h3>カード構成（計64枚）</h3>
       <ul>
@@ -685,7 +681,7 @@
   <script src="https://www.youtube.com/iframe_api"></script>
 
   <script>
-    // --- YouTube BGM ＆ 効果音エンジン (v2.2) ---
+    // --- YouTube BGM ＆ 効果音エンジン (v2.3) ---
     let ytPlayer = null;
     let isBgmPlaying = true;
     let ytReady = false;
@@ -872,7 +868,6 @@
       }
     }
 
-    // --- ゲーム本体のロジック ---
     const CARD_TYPES = [
       { id: 'cockroach', name: 'ゴキブリ', icon: '🪳', class: 'card-cockroach', order: 1 },
       { id: 'spider',    name: 'クモ',     icon: '🕷️', class: 'card-spider',    order: 2 },
@@ -893,7 +888,7 @@
       { avatar: '🦁', bg: '#00bcd4', name: 'ライオン' }
     ];
 
-    const PEER_PREFIX = "goki-poker-room-3digit-v22-";
+    const PEER_PREFIX = "goki-poker-room-3digit-v23-";
 
     let peer = null;
     let connections = {};
@@ -934,7 +929,6 @@
       document.getElementById('recordModal').classList.toggle('active', show);
     }
 
-    // テーブル形式の戦績表示機能
     function updateRecordModalContent() {
       const container = document.getElementById('recordContent');
       if (!gameState.history || gameState.history.length === 0) {
@@ -944,19 +938,16 @@
 
       let html = `<p style="font-weight:bold; margin-bottom:8px; color:#333;">総試合数: ${gameState.gameCount}戦</p>`;
       
-      // プレイヤーごとの集計表
       html += `<h3>📊 プレイヤー別通算成績</h3>`;
       html += `<table class="record-table">`;
       html += `<tr><th>プレイヤー名</th><th>敗北ポイント</th></tr>`;
       
-      // 敗北ポイントの少ない順にソート
       const sortedPlayers = [...gameState.players].sort((a, b) => (a.loseCount || 0) - (b.loseCount || 0));
       sortedPlayers.forEach(p => {
         html += `<tr><td>${p.name} ${p.id === myId ? '(自分)' : ''}</td><td><strong>${p.loseCount || 0} 回</strong></td></tr>`;
       });
       html += `</table>`;
 
-      // 試合ごとの履歴テーブル
       html += `<h3 style="margin-top:16px;">📜 過去の勝負ログ</h3>`;
       html += `<table class="record-table">`;
       html += `<tr><th>第X戦</th><th>敗北者</th><th>敗北理由</th></tr>`;
@@ -968,7 +959,7 @@
       container.innerHTML = html;
     }
 
-    function showPopup(title, bodyHtml, styleClass = '', duration = 3500) {
+    function showPopup(title, bodyHtml, styleClass = '', duration = 2000) {
       const popup = document.getElementById('centerPopup');
       popup.className = `popup-banner ${styleClass} show`;
       document.getElementById('popupTitle').innerText = title;
@@ -1130,40 +1121,41 @@
         if (ev.guessCorrect) {
           if (myId === ev.targetId) {
             playSound('win');
-            showPopup("✨ 見破り成功！", `正解！カード（${realCardInfo.name} ${realCardInfo.icon}）は ${ev.fromName} が引き取りました。`, 'win');
+            showPopup("✨ 見破り成功！", `<div class="popup-sub">正解！カード（${realCardInfo.name} ${realCardInfo.icon}）は ${ev.fromName} が引き取りました。</div>`, 'win', 2000);
           } else if (myId === ev.fromId) {
             playSound('lose');
-            showPopup("💦 残念...！見破られました", `ブラフが見破られました。カード（${realCardInfo.name} ${realCardInfo.icon}）を自分の場に引き取ります...`, 'lose');
+            showPopup("💦 残念...！見破られました", `<div class="popup-sub">ブラフが見破られました。カード（${realCardInfo.name} ${realCardInfo.icon}）を自分の場に引き取ります...</div>`, 'lose', 2000);
           } else {
             playSound('click');
-            showPopup("✨ 見破り成功！", `${ev.targetName} が ${ev.fromName} のカードを見破りました。`, 'win');
+            showPopup("✨ 見破り成功！", `<div class="popup-sub">${ev.targetName} が ${ev.fromName} のカードを見破りました。</div>`, 'win', 2000);
           }
         } else {
           if (myId === ev.fromId) {
             playSound('bluff_success');
-            showPopup("😈 ブラフ成功！", `相手を騙すことに成功！カード（${realCardInfo.name} ${realCardInfo.icon}）は ${ev.targetName} が引き取りました！`, 'bluff');
+            showPopup("😈 ブラフ成功！", `<div class="popup-sub">相手を騙すことに成功！カード（${realCardInfo.name} ${realCardInfo.icon}）は ${ev.targetName} が引き取りました！</div>`, 'bluff', 2000);
           } else if (myId === ev.targetId) {
             playSound('lose');
-            showPopup("💦 残念...！見破り失敗", `ハズレです... カード（${realCardInfo.name} ${realCardInfo.icon}）を自分の場に引き取ります...`, 'lose');
+            showPopup("💦 残念...！見破り失敗", `<div class="popup-sub">ハズレです... カード（${realCardInfo.name} ${realCardInfo.icon}）を自分の場に引き取ります...</div>`, 'lose', 2000);
           } else {
             playSound('click');
-            showPopup("😈 ブラフ成功！", `${ev.fromName} が ${ev.targetName} を騙すことに成功しました！`, 'bluff');
+            showPopup("😈 ブラフ成功！", `<div class="popup-sub">${ev.fromName} が ${ev.targetName} を騙すことに成功しました！</div>`, 'bluff', 2000);
           }
         }
       } else if (ev.type === 'GAME_OVER') {
         setTimeout(() => {
           if (myId === gameState.loserId) {
             playSound('lose');
-            showPopup("😭 残念...！あなたの敗北です", `敗北条件を満たしてしまいました... (${ev.reason})`, 'lose', 12000);
+            // 勝敗表示時間を約2.0秒に短縮
+            showPopup("😭 残念...！あなたの敗北です", `<div class="popup-sub">敗北条件を満たしてしまいました... (${ev.reason})</div>`, 'lose', 2000);
           } else {
             playSound('win');
-            showPopup("🎉 勝利！", `おめでとうございます！ ${ev.loserName} さんの敗北により、あなたの勝利です！`, 'win', 12000);
+            // 勝敗表示時間を約2.0秒に短縮
+            showPopup("🎉 勝利！", `<div class="popup-sub">おめでとうございます！ ${ev.loserName} さんの敗北により、あなたの勝利です！</div>`, 'win', 2000);
           }
-        }, 1500);
+        }, 800);
       }
     }
 
-    // ぐるぐる回る円形ルーレットのアニメーション
     function startCircularRoulette(winnerId, winnerName) {
       const wheelContainerHtml = `
         <div class="roulette-wheel-container">
@@ -1187,19 +1179,17 @@
         let currentAngle = 0;
         const winnerIndex = players.findIndex(p => p.id === winnerId);
         
-        // ターゲット位置（上部ポインター）に当選者が来るような最終角度計算
         const targetAngle = 1.5 * Math.PI - (winnerIndex * arcSize + arcSize / 2);
         const totalSpinAngle = 6 * 2 * Math.PI + (targetAngle % (2 * Math.PI));
 
         let startTime = null;
-        const duration = 2500; // 2.5秒間回転
+        const duration = 2500;
 
         function animateWheel(timestamp) {
           if (!startTime) startTime = timestamp;
           const elapsed = timestamp - startTime;
           const progress = Math.min(elapsed / duration, 1);
           
-          // イージング関数（だんだん減速）
           const easeOut = 1 - Math.pow(1 - progress, 3);
           const currentRotation = totalSpinAngle * easeOut;
 
@@ -1208,7 +1198,6 @@
           ctx.translate(110, 110);
           ctx.rotate(currentRotation);
 
-          // セグメント描画
           players.forEach((p, i) => {
             const startAngle = i * arcSize;
             const endAngle = (i + 1) * arcSize;
@@ -1223,7 +1212,6 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // テキスト描画
             ctx.save();
             ctx.rotate(startAngle + arcSize / 2);
             ctx.textAlign = 'right';
